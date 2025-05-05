@@ -14,12 +14,8 @@ st.set_page_config(
 df_geral = dados.df_geral
 df_modificado = df_geral
 
+print(df_modificado)
 
-#TODO: dias
-
-cinco_dias = timedelta(days=5)
-nove_dias = timedelta(days=9)
-catorze_dias = timedelta(days=14)
 
 def delta1e3(delta):
     for i, val in df_geral[delta].items():
@@ -36,22 +32,31 @@ def delta1e3(delta):
             else:
                 df_modificado.loc[i, delta] = "Atrasado"
 
+def delta2():
+    for i, val in df_geral["Tempo até aprovação"].items():
+        if pd.isna(val):
+            df_modificado.loc[i, "Tempo até aprovação"] = "Sem informação"
+        else:
+            dias = val.days  # converte Timedelta para número de dias
+            if dias < 15:
+                df_modificado.loc[i, "Tempo até aprovação"] = "No prazo"
+            elif 15 <= dias < 29:
+                df_modificado.loc[i, "Tempo até aprovação"] = "Alerta"
+            else:
+                df_modificado.loc[i, "Tempo até aprovação"] = "Urgente"
 
-# Aplica a função
-delta1e3('Tempo até resposta')
-
-# Conta as classificações
-contagem = df_modificado['Tempo até resposta'].value_counts().reindex(
-    ["Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"], fill_value=0
-)
-
-# Aplica a função
-delta1e3('Tempo da aprovação até a assinatura')
-
-# Conta as classificações
-contagem3 = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(
-    ["Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"], fill_value=0
-)
+def deltaoverall():
+    for i, val in df_geral["Tempo até a assinatura"].items():
+        if pd.isna(val):
+            df_modificado.loc[i, "Tempo até a assinatura"] = "Sem informação"
+        else:
+            dias = val.days  # converte Timedelta para número de dias
+            if dias < 25:
+                df_modificado.loc[i, "Tempo até a assinatura"] = "Tempo bom"
+            elif 25 <= dias < 59:
+                df_modificado.loc[i, "Tempo até a assinatura"] = "Atenção"
+            else:
+                df_modificado.loc[i, "Tempo até a assinatura"] = "Atrasado"
 
 
 Contratos, ORÇAMENTOS, REGULATÓRIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
@@ -61,12 +66,20 @@ with Contratos:
     st.write("Delta 1")
     graf1, graf2 = st.columns(2)
     with graf1:
+        # Aplica a função
+        delta1e3('Tempo até resposta')
+
+        # Conta as classificações
+        contagem = df_modificado['Tempo até resposta'].value_counts().reindex(
+            ["Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"], fill_value=0
+        )
+
         # Gráfico de barras vertical
         fig = go.Figure(
             data=[go.Bar(
                 x=contagem.index,
                 y=contagem.values,
-                marker_color=["green", "orange", "red", "gray", "lightblue"]
+                marker_color=["gray", "green", "orange", "red", "lightblue"]
             )],
             layout=go.Layout(
                 title="Frequência de cada classificação",
@@ -80,24 +93,66 @@ with Contratos:
         #st.bar("var_grafico")
         pass
 
+
+
+
+
+
+
+
     st.write("Delta 2")
     graf3, graf4 = st.columns(2)
     with graf3:
-        pass
-        #st.bar("var_grafico")
+        # Aplica a função
+        delta2()
+
+        # Conta as classificações
+        contagem2 = df_modificado['Tempo até aprovação'].value_counts().reindex(
+            ["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0
+        )
+
+        # Gráfico de barras vertical
+        fig = go.Figure(
+            data=[go.Bar(
+                x=contagem2.index,
+                y=contagem2.values,
+                marker_color=["gray", "green", "orange", "red"]
+            )],
+            layout=go.Layout(
+                title="Frequência de cada classificação",
+                xaxis_title="Classificação",
+                yaxis_title="Quantidade",
+                bargap=0.4
+            )
+        )
+        st.plotly_chart(fig, use_container_width=True)
     with graf4:
         pass
         #st.bar("var_grafico")
 
+
+
+
+
+
+
     st.write("Delta 3")
     graf5, graf6 = st.columns(2)
     with graf5:
+        # Aplica a função
+        delta1e3('Tempo da aprovação até a assinatura')
+
+        # Conta as classificações
+        contagem3 = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(
+            ["Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"], fill_value=0
+        )
+
         # Gráfico de barras vertical
         fig = go.Figure(
             data=[go.Bar(
                 x=contagem3.index,
                 y=contagem3.values,
-                marker_color=["green", "orange", "red", "gray", "lightblue"]
+                marker_color=["gray", "green", "orange", "red", "lightblue"]
             )],
             layout=go.Layout(
                 title="Frequência de cada classificação",
@@ -111,14 +166,51 @@ with Contratos:
         pass
         #st.bar("var_grafico")
 
+
+
+
+
     st.write("Delta 4")
     graf7, graf8 = st.columns(2)
     with graf7:
-        pass
-        #st.bar("var_grafico")
+         # Aplica a função
+        deltaoverall()
+
+        # Conta as classificações
+        contagem4 = df_modificado['Tempo até a assinatura'].value_counts().reindex(
+            ["Tempo bom", "Atenção", "Atrasado"], fill_value=0
+        )
+
+        # Gráfico de barras vertical
+        fig = go.Figure(
+            data=[go.Bar(
+                x=contagem4.index,
+                y=contagem4.values,
+                marker_color=["green", "orange", "red"]
+            )],
+            layout=go.Layout(
+                title="Frequência de cada classificação",
+                xaxis_title="Classificação",
+                yaxis_title="Quantidade",
+                bargap=0.4
+            )
+        )
+        st.plotly_chart(fig, use_container_width=True)
     with graf8:
         pass
         #st.bar("var_grafico")
+
+    
+    st.write("SLA")
+    Delta1, Delta2, Delta3, Delta4 = st.columns(4)
+    with Delta1:
+        pass
+    with Delta2:
+        pass
+    with Delta3:
+        pass
+    with Delta4:
+        pass
 
     st.markdown("---")
     st.subheader("📋 Visualização da Tabela Geral")
