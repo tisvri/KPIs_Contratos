@@ -3,7 +3,11 @@ import streamlit as st
 import pandas as pd
 import plotly as pl
 import plotly.graph_objects as go
+import plotly.express as px
+import matplotlib.pyplot as plt
+import numpy as np
 from datetime import datetime, timedelta
+
 
 st.set_page_config(
     page_title="KPIs",
@@ -59,6 +63,9 @@ def deltaoverall():
                 df_modificado.loc[i, "Tempo até a assinatura"] = "Atrasado"
 
 
+
+
+
 Contratos, ORÇAMENTOS, REGULATÓRIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
 
 #TODO Contratos:
@@ -90,8 +97,28 @@ with Contratos:
         )
         st.plotly_chart(fig, use_container_width=True)
     with graf2:
-        #st.bar("var_grafico")
-        pass
+       # Contagem dos contratos por PI
+        contagem_pi = df_modificado['Investigador PI'].value_counts()
+
+        # Criando o gráfico de barras horizontal
+        fig = go.Figure(go.Bar(
+            x=contagem_pi.values,
+            y=contagem_pi.index,
+            orientation='h',
+            marker_color='indianred'
+        ))
+
+        # Atualizando o layout do gráfico
+        fig.update_layout(
+            title='Contagem de contratos por Investigador PI',
+            xaxis_title='Quantidade de contratos',
+            yaxis_title='Investigador PI',
+            template='plotly_white',
+            yaxis=dict(autorange="reversed")  # Para mostrar os maiores no topo
+        )
+
+        # Exibindo o gráfico no Streamlit
+        st.plotly_chart(fig, use_container_width=True)
 
 
 
@@ -127,8 +154,28 @@ with Contratos:
         )
         st.plotly_chart(fig, use_container_width=True)
     with graf4:
-        pass
-        #st.bar("var_grafico")
+        # Contagem dos contratos por PI
+        contagemsponsor = df_modificado['Nome do patrocinador'].value_counts()
+
+        # Criando o gráfico de barras horizontal
+        fig = go.Figure(go.Bar(
+            x=contagemsponsor.values,
+            y=contagemsponsor.index,
+            orientation='h',
+            marker_color='indianred'
+        ))
+
+        # Atualizando o layout do gráfico
+        fig.update_layout(
+            title='Contagem de contratos por Investigador PI',
+            xaxis_title='Quantidade de contratos',
+            yaxis_title='Sponsor',
+            template='plotly_white',
+            yaxis=dict(autorange="reversed")  # Para mostrar os maiores no topo
+        )
+
+        # Exibindo o gráfico no Streamlit
+        st.plotly_chart(fig, use_container_width=True)
 
 
 
@@ -163,8 +210,57 @@ with Contratos:
         )
         st.plotly_chart(fig, use_container_width=True)
     with graf6:
-        pass
-        #st.bar("var_grafico")
+        df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
+
+        # Pivotar os dados para ficar no formato ideal
+        pivot = df_grouped.pivot(index='Nome do patrocinador', columns='Investigador PI', values='Quantidade').fillna(0)
+
+        # Dados
+        sponsors = pivot.index.tolist()
+        investigadores = pivot.columns.tolist()
+        bar_width = 0.25
+        x = np.arange(len(sponsors))
+
+        # Plot
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Desenhar cada Investigador PI com deslocamento
+        for i, investigador in enumerate(investigadores):
+            ax.bar(x + i * bar_width, pivot[investigador], bar_width, label=investigador)
+
+        # Rótulos
+        ax.set_xlabel('Sponsor')
+        ax.set_ylabel('Quantidade de Contratos')
+        ax.set_title('Contratos por Investigador PI agrupados por Sponsor')
+        ax.set_xticks(x + bar_width * (len(investigadores) - 1) / 2)
+        ax.set_xticklabels(sponsors, rotation=45, ha='right')
+        ax.legend(title='Investigador PI')
+
+        plt.tight_layout()
+        st.pyplot(fig)
+
+
+        # df_modificado.style()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
