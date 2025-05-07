@@ -1,372 +1,188 @@
-import dados
 import streamlit as st
 import pandas as pd
-import plotly as pl
 import plotly.graph_objects as go
-import plotly.express as px
 import matplotlib.pyplot as plt
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import timedelta
+import dados
 
+# TODO Configuração da página
+st.set_page_config(page_title="KPIs", layout="wide")
 
-st.set_page_config(
-    page_title="KPIs",
-    layout="wide"
-)
+# TODO Carregamento de dados
+df_geral = dados.df_geral.copy()
+df_modificado = df_geral.copy()
 
-
-df_geral = dados.df_geral
-df_modificado = df_geral
-
-print(df_modificado)
-
-
-def delta1e3(delta):
-    for i, val in df_geral[delta].items():
+# TODO Funções para classificação de deltas
+def classificar_delta(df, coluna, faixas):
+    df[coluna] = pd.to_timedelta(df[coluna], errors='coerce')
+    resultado = []
+    for val in df[coluna]:
         if pd.isna(val):
-            df_modificado.loc[i, delta] = "Sem informação"
+            resultado.append("Sem informação")
         else:
-            dias = val.days  # converte Timedelta para número de dias
-            if dias < 5:
-                df_modificado.loc[i, delta] = "No prazo"
-            elif 5 <= dias < 9:
-                df_modificado.loc[i, delta] = "Alerta"
-            elif 9 <= dias < 14:
-                df_modificado.loc[i, delta] = "Urgente"
+            dias = val.days
+            for rotulo, minimo, maximo in faixas:
+                if minimo <= dias < maximo:
+                    resultado.append(rotulo)
+                    break
             else:
-                df_modificado.loc[i, delta] = "Atrasado"
+                resultado.append(faixas[-1][0])
+    return resultado
 
-def delta2():
-    for i, val in df_geral["Tempo até aprovação"].items():
-        if pd.isna(val):
-            df_modificado.loc[i, "Tempo até aprovação"] = "Sem informação"
-        else:
-            dias = val.days  # converte Timedelta para número de dias
-            if dias < 15:
-                df_modificado.loc[i, "Tempo até aprovação"] = "No prazo"
-            elif 15 <= dias < 29:
-                df_modificado.loc[i, "Tempo até aprovação"] = "Alerta"
-            else:
-                df_modificado.loc[i, "Tempo até aprovação"] = "Urgente"
+# TODO Aplicando as classificações
+df_modificado['Tempo até resposta'] = classificar_delta(df_geral, 'Tempo até resposta', [
+    ("No prazo", 0, 5),
+    ("Alerta", 5, 9),
+    ("Urgente", 9, 14),
+    ("Atrasado", 14, float('inf'))
+])
 
-def deltaoverall():
-    for i, val in df_geral["Tempo até a assinatura"].items():
-        if pd.isna(val):
-            df_modificado.loc[i, "Tempo até a assinatura"] = "Sem informação"
-        else:
-            dias = val.days  # converte Timedelta para número de dias
-            if dias < 25:
-                df_modificado.loc[i, "Tempo até a assinatura"] = "Tempo bom"
-            elif 25 <= dias < 59:
-                df_modificado.loc[i, "Tempo até a assinatura"] = "Atenção"
-            else:
-                df_modificado.loc[i, "Tempo até a assinatura"] = "Atrasado"
+df_modificado['Tempo até aprovação'] = classificar_delta(df_geral, 'Tempo até aprovação', [
+    ("No prazo", 0, 15),
+    ("Alerta", 15, 29),
+    ("Urgente", 29, float('inf'))
+])
+
+df_modificado['Tempo da aprovação até a assinatura'] = classificar_delta(df_geral, 'Tempo da aprovação até a assinatura', [
+    ("No prazo", 0, 5),
+    ("Alerta", 5, 9),
+    ("Urgente", 9, 14),
+    ("Atrasado", 14, float('inf'))
+])
+
+df_modificado['Tempo até a assinatura'] = classificar_delta(df_geral, 'Tempo até a assinatura', [
+    ("Tempo bom", 0, 25),
+    ("Atenção", 25, 59),
+    ("Atrasado", 59, float('inf'))
+])
+
+# TODO Filtro lateral
+status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
+
+status_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
+Delta2Filtro = st.sidebar.selectbox("Status delta 2", status_delta2)
+
+status_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
+
+status_delta4 = ["Geral", "Tempo bom", "Atenção", "Atrasado"]
+Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
 
 
+if Delta1Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo até resposta'] == Delta1Filtro]
+
+if Delta2Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo até aprovação'] == Delta2Filtro]
+
+if Delta3Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo da aprovação até a assinatura'] == Delta3Filtro]
+
+if Delta4Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo até a assinatura'] == Delta4Filtro]
 
 
+# Abas
+Contratos, ORCAMENTOS, REGULATORIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
 
-Contratos, ORÇAMENTOS, REGULATÓRIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
+# Função de gráfico de barras
+def grafico_barras(contagem, titulo, cores):
+    return go.Figure(
+        data=[go.Bar(x=contagem.index, y=contagem.values, marker_color=cores)],
+        layout=go.Layout(
+            title=titulo,
+            xaxis_title="Classificação",
+            yaxis_title="Quantidade",
+            bargap=0.4
+        )
+    )
 
-#TODO Contratos:
+# Função de gráfico horizontal por PI
+def grafico_horizontal_por_coluna(coluna, titulo):
+    contagem = df_modificado[coluna].value_counts()
+    fig = go.Figure(go.Bar(
+        x=contagem.values,
+        y=contagem.index,
+        orientation='h',
+        marker_color='indianred'
+    ))
+    fig.update_layout(
+        title=titulo,
+        xaxis_title='Quantidade',
+        yaxis_title=coluna,
+        template='plotly_white',
+        yaxis=dict(autorange="reversed")
+    )
+    return fig
+
+# Função de gráfico agrupado por PI e sponsor
+def grafico_agrupado():
+    df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
+    pivot = df_grouped.pivot(index='Nome do patrocinador', columns='Investigador PI', values='Quantidade').fillna(0)
+    sponsors = pivot.index.tolist()
+    investigadores = pivot.columns.tolist()
+    bar_width = 0.12
+    x = np.arange(len(sponsors))
+
+    fig, ax = plt.subplots(figsize=(24, 12))
+    for i, investigador in enumerate(investigadores):
+        ax.bar(x + i * bar_width, pivot[investigador], bar_width, label=investigador)
+
+    ax.set_xlabel('Sponsor')
+    ax.set_ylabel('Quantidade de Contratos')
+    ax.set_title('Contratos por Investigador PI agrupados por Sponsor')
+    ax.set_xticks(x + bar_width * (len(investigadores) - 1) / 2)
+    ax.set_xticklabels(sponsors, rotation=45, ha='right')
+    ax.legend(title='Investigador PI')
+    plt.tight_layout()
+    return fig
+
+# TODO: Aba Contratos
 with Contratos:
     st.write("Delta 1")
     graf1, graf2 = st.columns(2)
     with graf1:
-        # Aplica a função
-        delta1e3('Tempo até resposta')
-
-        # Conta as classificações
-        contagem = df_modificado['Tempo até resposta'].value_counts().reindex(
-            ["Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"], fill_value=0
-        )
-
-        # Gráfico de barras vertical
-        fig = go.Figure(
-            data=[go.Bar(
-                x=contagem.index,
-                y=contagem.values,
-                marker_color=["gray", "green", "orange", "red", "lightblue"]
-            )],
-            layout=go.Layout(
-                title="Frequência de cada classificação",
-                xaxis_title="Classificação",
-                yaxis_title="Quantidade",
-                bargap=0.4
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        contagem = df_modificado['Tempo até resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
     with graf2:
-       # Contagem dos contratos por PI
-        contagem_pi = df_modificado['Investigador PI'].value_counts()
-
-        # Criando o gráfico de barras horizontal
-        fig = go.Figure(go.Bar(
-            x=contagem_pi.values,
-            y=contagem_pi.index,
-            orientation='h',
-            marker_color='indianred'
-        ))
-
-        # Atualizando o layout do gráfico
-        fig.update_layout(
-            title='Contagem de contratos por Investigador PI',
-            xaxis_title='Quantidade de contratos',
-            yaxis_title='Investigador PI',
-            template='plotly_white',
-            yaxis=dict(autorange="reversed")  # Para mostrar os maiores no topo
-        )
-
-        # Exibindo o gráfico no Streamlit
-        st.plotly_chart(fig, use_container_width=True)
-
-
-
-
-
-
-
+        st.plotly_chart(grafico_horizontal_por_coluna('Investigador PI', 'Contratos por Investigador PI'), use_container_width=True)
 
     st.write("Delta 2")
     graf3, graf4 = st.columns(2)
     with graf3:
-        # Aplica a função
-        delta2()
-
-        # Conta as classificações
-        contagem2 = df_modificado['Tempo até aprovação'].value_counts().reindex(
-            ["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0
-        )
-
-        # Gráfico de barras vertical
-        fig = go.Figure(
-            data=[go.Bar(
-                x=contagem2.index,
-                y=contagem2.values,
-                marker_color=["gray", "green", "orange", "red"]
-            )],
-            layout=go.Layout(
-                title="Frequência de cada classificação",
-                xaxis_title="Classificação",
-                yaxis_title="Quantidade",
-                bargap=0.4
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        contagem = df_modificado['Tempo até aprovação'].value_counts().reindex(["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0)
+        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 2", ["gray", "green", "orange", "red"]), use_container_width=True)
     with graf4:
-        # Contagem dos contratos por PI
-        contagemsponsor = df_modificado['Nome do patrocinador'].value_counts()
-
-        # Criando o gráfico de barras horizontal
-        fig = go.Figure(go.Bar(
-            x=contagemsponsor.values,
-            y=contagemsponsor.index,
-            orientation='h',
-            marker_color='indianred'
-        ))
-
-        # Atualizando o layout do gráfico
-        fig.update_layout(
-            title='Contagem de contratos por Investigador PI',
-            xaxis_title='Quantidade de contratos',
-            yaxis_title='Sponsor',
-            template='plotly_white',
-            yaxis=dict(autorange="reversed")  # Para mostrar os maiores no topo
-        )
-
-        # Exibindo o gráfico no Streamlit
-        st.plotly_chart(fig, use_container_width=True)
-
-
-
-
-
-
+        st.plotly_chart(grafico_horizontal_por_coluna('Nome do patrocinador', 'Contratos por Sponsor'), use_container_width=True)
 
     st.write("Delta 3")
     graf5, graf6 = st.columns(2)
     with graf5:
-        # Aplica a função
-        delta1e3('Tempo da aprovação até a assinatura')
-
-        # Conta as classificações
-        contagem3 = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(
-            ["Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"], fill_value=0
-        )
-
-        # Gráfico de barras vertical
-        fig = go.Figure(
-            data=[go.Bar(
-                x=contagem3.index,
-                y=contagem3.values,
-                marker_color=["gray", "green", "orange", "red", "lightblue"]
-            )],
-            layout=go.Layout(
-                title="Frequência de cada classificação",
-                xaxis_title="Classificação",
-                yaxis_title="Quantidade",
-                bargap=0.4
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        contagem = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(status_delta3[1:], fill_value=0)
+        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
     with graf6:
-        df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
-
-        # Pivotar os dados para ficar no formato ideal
-        pivot = df_grouped.pivot(index='Nome do patrocinador', columns='Investigador PI', values='Quantidade').fillna(0)
-
-        # Dados
-        sponsors = pivot.index.tolist()
-        investigadores = pivot.columns.tolist()
-        bar_width = 0.25
-        x = np.arange(len(sponsors))
-
-        # Plot
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        # Desenhar cada Investigador PI com deslocamento
-        for i, investigador in enumerate(investigadores):
-            ax.bar(x + i * bar_width, pivot[investigador], bar_width, label=investigador)
-
-        # Rótulos
-        ax.set_xlabel('Sponsor')
-        ax.set_ylabel('Quantidade de Contratos')
-        ax.set_title('Contratos por Investigador PI agrupados por Sponsor')
-        ax.set_xticks(x + bar_width * (len(investigadores) - 1) / 2)
-        ax.set_xticklabels(sponsors, rotation=45, ha='right')
-        ax.legend(title='Investigador PI')
-
-        plt.tight_layout()
-        st.pyplot(fig)
-
-
-        # df_modificado.style()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        st.pyplot(grafico_agrupado())
 
     st.write("Delta 4")
     graf7, graf8 = st.columns(2)
     with graf7:
-         # Aplica a função
-        deltaoverall()
-
-        # Conta as classificações
-        contagem4 = df_modificado['Tempo até a assinatura'].value_counts().reindex(
-            ["Tempo bom", "Atenção", "Atrasado"], fill_value=0
-        )
-
-        # Gráfico de barras vertical
-        fig = go.Figure(
-            data=[go.Bar(
-                x=contagem4.index,
-                y=contagem4.values,
-                marker_color=["green", "orange", "red"]
-            )],
-            layout=go.Layout(
-                title="Frequência de cada classificação",
-                xaxis_title="Classificação",
-                yaxis_title="Quantidade",
-                bargap=0.4
-            )
-        )
-        st.plotly_chart(fig, use_container_width=True)
+        contagem = df_modificado['Tempo até a assinatura'].value_counts().reindex(["Tempo bom", "Atenção", "Atrasado"], fill_value=0)
+        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 4", ["green", "orange", "red"]), use_container_width=True)
     with graf8:
-        pass
-        #st.bar("var_grafico")
+        pass  # Espaço reservado para futuros gráficos
 
-    
-    st.write("SLA")
-    Delta1, Delta2, Delta3, Delta4 = st.columns(4)
-    with Delta1:
-        pass
-    with Delta2:
-        pass
-    with Delta3:
-        pass
-    with Delta4:
-        pass
 
-    st.markdown("---")
+    #TODO: tabela
     st.subheader("📋 Visualização da Tabela Geral")
+    colunas_disponiveis = [col for col in [
+        "Protocolo", "Centro coordenador", "Nome do patrocinador", "Investigador PI",
+        "Status do contrato", "Tempo até a assinatura", "Tempo da aprovação até a assinatura", "Tempo até aprovação", "Tempo até resposta","Data do recebimento do orçamento",
+        "Data da aprovação do orçamento", "Tempo no orçamento", "Obsevações do contrato"
+    ] if col in df_modificado.columns]
 
-    # Defina as colunas que você quer que o usuário possa selecionar
-    colunas_disponiveis = ["Protocolo", "Centro coordenador", "Nome do patrocinador", "Investigador PI", "Status do contrato", "Tempo até a assinatura", "Data do recebimento do orçamento", "Data da aprovação do orçamento", "Tempo no orçamento", "Obsevações do contrato"]
-
-    # Ajusta para exibir apenas as que existem de fato no DataFrame
-    colunas_disponiveis = [col for col in colunas_disponiveis if col in df_modificado.columns]
-
-    # Campo de seleção de colunas
-    colunas_selecionadas = st.multiselect(
-        "Selecione as colunas que deseja visualizar:",
-        options=colunas_disponiveis,
-        default=colunas_disponiveis  # ou selecione algumas por padrão
-    )
-
-    # Exibe apenas as colunas selecionadas
+    colunas_selecionadas = st.multiselect("Selecione as colunas para visualizar:", colunas_disponiveis, default=colunas_disponiveis)
     st.dataframe(df_modificado[colunas_selecionadas])
 
-#TODO Orcamentos:
-with ORÇAMENTOS:
-    st.write("Delta 1")
-    graf1, graf2 = st.columns(2)
-    with graf1:
-        pass
-        #st.bar("var_grafico")
-    with graf2:
-        pass
-        #st.bar("var_grafico")
-
-    st.write("Delta 2")
-    graf3, graf4 = st.columns(2)
-    with graf3:
-        pass
-        #st.bar("var_grafico")
-    with graf4:
-        pass
-        #st.bar("var_grafico")
-
-    st.write("Delta 3")
-    graf5, graf6 = st.columns(2)
-    with graf5:
-        pass
-        #st.bar("var_grafico")
-    with graf6:
-        pass
-        #st.bar("var_grafico")
-    
-#TODO Regulatorio:
-with REGULATÓRIO:
-    st.write("Delta 1")
-    graf1, graf2 = st.columns(2)
-    with graf1:
-        pass
-        #st.bar("var_grafico")
-    with graf2:
-        pass
-        #st.bar("var_grafico")
-
-#TODO Geral:
-with GERAL:
-    pass
+# Abas Orcamentos, Regulatorio e Geral permanecem como TODO
