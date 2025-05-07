@@ -61,8 +61,14 @@ df_modificado['Tempo até a assinatura'] = classificar_delta(df_geral, 'Tempo at
 status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
 Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
 
+pi_options = sorted(df_modificado['Investigador PI'].unique())
+PiFiltro = st.sidebar.multiselect("Selecione o PI", options=pi_options)
+
 status_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
 Delta2Filtro = st.sidebar.selectbox("Status delta 2", status_delta2)
+
+sponsor_options = sorted(df_modificado['Nome do patrocinador'].unique())
+sponsorFiltro = st.sidebar.multiselect("Selecione o Sponsor", options=sponsor_options)
 
 status_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
 Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
@@ -70,7 +76,7 @@ Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
 status_delta4 = ["Geral", "Tempo bom", "Atenção", "Atrasado"]
 Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
 
-
+#TODO: deltas selecionados
 if Delta1Filtro != "Geral":
     df_modificado = df_modificado[df_modificado['Tempo até resposta'] == Delta1Filtro]
 
@@ -83,6 +89,12 @@ if Delta3Filtro != "Geral":
 if Delta4Filtro != "Geral":
     df_modificado = df_modificado[df_modificado['Tempo até a assinatura'] == Delta4Filtro]
 
+#TODO: Outros filtros selecionados
+if PiFiltro:
+    df_modificado = df_modificado[df_modificado['Investigador PI'].isin(PiFiltro)]
+
+if sponsorFiltro:
+    df_modificado = df_modificado[df_modificado['Nome do patrocinador'].isin(sponsorFiltro)]
 
 # Abas
 Contratos, ORCAMENTOS, REGULATORIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
@@ -117,31 +129,34 @@ def grafico_horizontal_por_coluna(coluna, titulo):
     )
     return fig
 
-# Função de gráfico agrupado por PI e sponsor
-def grafico_agrupado():
-    df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
-    pivot = df_grouped.pivot(index='Nome do patrocinador', columns='Investigador PI', values='Quantidade').fillna(0)
-    sponsors = pivot.index.tolist()
-    investigadores = pivot.columns.tolist()
-    bar_width = 0.12
-    x = np.arange(len(sponsors))
+# # Função de gráfico agrupado por PI e sponsor
+# def grafico_agrupado():
+#     df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
+#     pivot = df_grouped.pivot(index='Nome do patrocinador', columns='Investigador PI', values='Quantidade').fillna(0)
+#     sponsors = pivot.index.tolist()
+#     investigadores = pivot.columns.tolist()
+#     bar_width = 0.12
+#     x = np.arange(len(sponsors))
 
-    fig, ax = plt.subplots(figsize=(24, 12))
-    for i, investigador in enumerate(investigadores):
-        ax.bar(x + i * bar_width, pivot[investigador], bar_width, label=investigador)
+#     fig, ax = plt.subplots(figsize=(24, 12))
+#     for i, investigador in enumerate(investigadores):
+#         ax.bar(x + i * bar_width, pivot[investigador], bar_width, label=investigador)
 
-    ax.set_xlabel('Sponsor')
-    ax.set_ylabel('Quantidade de Contratos')
-    ax.set_title('Contratos por Investigador PI agrupados por Sponsor')
-    ax.set_xticks(x + bar_width * (len(investigadores) - 1) / 2)
-    ax.set_xticklabels(sponsors, rotation=45, ha='right')
-    ax.legend(title='Investigador PI')
-    plt.tight_layout()
-    return fig
+#     ax.set_xlabel('Sponsor')
+#     ax.set_ylabel('Quantidade de Contratos')
+#     ax.set_title('Contratos por Investigador PI agrupados por Sponsor')
+#     ax.set_xticks(x + bar_width * (len(investigadores) - 1) / 2)
+#     ax.set_xticklabels(sponsors, rotation=45, ha='right')
+#     ax.legend(title='Investigador PI')
+#     plt.tight_layout()
+#     return fig
 
 # TODO: Aba Contratos
 with Contratos:
-    st.write("Delta 1")
+    #TODO: Delta 1
+    with st.expander("Delta 1"):
+        st.markdown("Tempo até resposta:<br>> 5 dias No prazo<br>5 - 9 dias Alerta<br>10 - 14 dias Urgente<br>15+ dias Atrasado", unsafe_allow_html=True)
+
     graf1, graf2 = st.columns(2)
     with graf1:
         contagem = df_modificado['Tempo até resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
@@ -149,7 +164,10 @@ with Contratos:
     with graf2:
         st.plotly_chart(grafico_horizontal_por_coluna('Investigador PI', 'Contratos por Investigador PI'), use_container_width=True)
 
-    st.write("Delta 2")
+    #TODO: Delta 2
+    with st.expander("Delta 2"):
+        st.markdown("Tempo até aprovação:<br>> 15 dias No prazo<br>15 - 29 dias Alerta<br>30+ dias Urgente", unsafe_allow_html=True)
+
     graf3, graf4 = st.columns(2)
     with graf3:
         contagem = df_modificado['Tempo até aprovação'].value_counts().reindex(["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0)
@@ -157,15 +175,38 @@ with Contratos:
     with graf4:
         st.plotly_chart(grafico_horizontal_por_coluna('Nome do patrocinador', 'Contratos por Sponsor'), use_container_width=True)
 
-    st.write("Delta 3")
+    #TODO: Delta 3
+    with st.expander("Delta 3"):
+        st.markdown("Tempo da aprovação até a assinatura:<br>> 5 dias No prazo<br>5 - 9 dias Alerta<br>10 - 14 dias Urgente<br>15+ dias Atrasado", unsafe_allow_html=True)
+
     graf5, graf6 = st.columns(2)
     with graf5:
         contagem = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(status_delta3[1:], fill_value=0)
         st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
     with graf6:
-        st.pyplot(grafico_agrupado())
 
-    st.write("Delta 4")
+        # Agrupamento e contagem
+        df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
+        
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Nome do patrocinador': 'Sponsor',
+            'Investigador PI': 'Investigador'
+        })
+
+        # Gráfico com Streamlit
+        st.bar_chart(
+            data=df_grouped,
+            x='Sponsor',
+            y='Quantidade',
+            color='Investigador',
+            use_container_width=True
+        )
+
+    #TODO: Delta 4
+    with st.expander("Delta 4"):
+        st.markdown("Tempo até resposta:<br>> 24 dias: Tempo Bom<br>25 - 59 dias: Atenção<br>60+ dias Atrasado", unsafe_allow_html=True)
+
     graf7, graf8 = st.columns(2)
     with graf7:
         contagem = df_modificado['Tempo até a assinatura'].value_counts().reindex(["Tempo bom", "Atenção", "Atrasado"], fill_value=0)
@@ -178,8 +219,7 @@ with Contratos:
     st.subheader("📋 Visualização da Tabela Geral")
     colunas_disponiveis = [col for col in [
         "Protocolo", "Centro coordenador", "Nome do patrocinador", "Investigador PI",
-        "Status do contrato", "Tempo até a assinatura", "Tempo da aprovação até a assinatura", "Tempo até aprovação", "Tempo até resposta","Data do recebimento do orçamento",
-        "Data da aprovação do orçamento", "Tempo no orçamento", "Obsevações do contrato"
+        "Status do contrato", "Tempo até resposta", "Tempo até aprovação", "Tempo da aprovação até a assinatura", "Tempo até a assinatura", "Obsevações do contrato"
     ] if col in df_modificado.columns]
 
     colunas_selecionadas = st.multiselect("Selecione as colunas para visualizar:", colunas_disponiveis, default=colunas_disponiveis)
