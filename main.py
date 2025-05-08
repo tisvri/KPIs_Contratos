@@ -245,3 +245,13 @@ with ORCAMENTOS:
 
     with st.expander("Delta 3"):
         st.markdown("Tempo no orçamento:<br>", unsafe_allow_html=True)
+
+#TODO Aba regulatorio
+with REGULATORIO:
+    with st.expander("Delta"):
+        st.markdown("Tempo no regulatório:", unsafe_allow_html=True)
+
+#TODO Aba geral
+with GERAL:
+    with st.expander("Geral"):
+        st.markdown(".:", unsafe_allow_html=True)
