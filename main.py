@@ -3,8 +3,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import numpy as np
-from datetime import timedelta
+from datetime import timedelta, date
 import dados
+import altair as alt
+
 
 # TODO Configuração da página
 st.set_page_config(page_title="KPIs", layout="wide")
@@ -13,12 +15,17 @@ st.set_page_config(page_title="KPIs", layout="wide")
 df_geral = dados.df_geral.copy()
 df_modificado = df_geral.copy()
 
+today = date.today
+
 # TODO Funções para classificação de deltas
 def classificar_delta(df, coluna, faixas):
     df[coluna] = pd.to_timedelta(df[coluna], errors='coerce')
     resultado = []
     for val in df[coluna]:
         if pd.isna(val):
+            if coluna == 'Tempo até resposta':
+                pass
+
             resultado.append("Sem informação")
         else:
             dias = val.days
@@ -62,15 +69,16 @@ BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         "Concluidos"],
                         index=None)
 
+#print(df_modificado.columns)
+#print(df_modificado['Status do contrato'].unique())
+
 if BaseDeDados == "Em andamento":
-    df_modificado = df_modificado[~df_modificado['Status do contrato'].isin(['Assinado'])]
+    df_modificado = df_modificado[~df_modificado['Status do contrato'].isin(['Assinado']) & ~df_modificado['Status do contrato'].isin(['Não recebido'])]
 else:
     df_modificado = df_modificado[df_modificado['Status do contrato'].isin(['Assinado'])]
 
 
-
-
-# Abas
+#TODO: Abas
 Contratos, ORCAMENTOS, REGULATORIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
 
 # Função de gráfico de barras
@@ -178,23 +186,27 @@ with Contratos:
         st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
     with graf6:
 
-        # Agrupamento e contagem
+       # Agrupamento e contagem
         df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
-        
+
         # Renomeia colunas para facilitar o uso no Streamlit
         df_grouped = df_grouped.rename(columns={
             'Nome do patrocinador': 'Sponsor',
             'Investigador PI': 'Investigador'
         })
 
-        # Gráfico com Streamlit
-        st.bar_chart(
-            data=df_grouped,
-            x='Sponsor',
-            y='Quantidade',
-            color='Investigador',
-            use_container_width=True
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Sponsor:N', sort='-x'),
+            x='Quantidade:Q',
+            color='Investigador:N',
+            tooltip=['Sponsor', 'Investigador', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
         )
+
+        st.altair_chart(chart, use_container_width=True)
 
     #TODO: Delta 4
     with st.expander("Delta 4"):
@@ -207,25 +219,31 @@ with Contratos:
     with graf8:
         # Agrupamento e contagem
         df_grouped = df_modificado.groupby(['Status do contrato', 'Tempo até resposta']).size().reset_index(name='Quantidade')
-        
+
         # Renomeia colunas para facilitar o uso no Streamlit
         df_grouped = df_grouped.rename(columns={
             'Status do contrato': 'Status',
             'Tempo até resposta': 'Tempo até resposta'
         })
 
-        # Gráfico com Streamlit
-        st.bar_chart(
-            data=df_grouped,
-            x='Status',
-            y='Quantidade',
-            color='Tempo até resposta',
-            use_container_width=True
+        # Gráfico de barras horizontais com Altair
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Status:N', sort='-x', title='Status do Contrato'),
+            x=alt.X('Quantidade:Q', title='Quantidade'),
+            color=alt.Color('Tempo até resposta:N', title='Tempo até Resposta'),
+            tooltip=['Status', 'Tempo até resposta', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500,
+            title='Quantidade por Status do Contrato e Tempo até Resposta'
         )
+
+        # Exibe o gráfico no Streamlit
+        st.altair_chart(chart, use_container_width=True)
 
 
     #TODO: tabela
-    st.subheader("📋 Visualização da Tabela Geral")
+    st.subheader("Tabela Geral")
     colunas_disponiveis = [col for col in [
         "Protocolo", "Centro coordenador", "Nome do patrocinador", "Investigador PI",
         "Status do contrato", "Tempo até resposta", "Tempo até aprovação", "Tempo da aprovação até a assinatura", "Tempo até a assinatura", "Obsevações do contrato"
@@ -239,6 +257,7 @@ with ORCAMENTOS:
     #TODO: Delta 1
     with st.expander("Delta 1"):
         st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
+        
 
     with st.expander("Delta 2"):
         st.markdown("Tempo decorrido de resposta até aprovado em orçamento:<br>", unsafe_allow_html=True)
