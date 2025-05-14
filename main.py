@@ -176,9 +176,27 @@ def grafico_horizontal_por_coluna(coluna, titulo):
     )
     return fig
 
+def grafico_pizza(contagem, titulo, cores):
+    total = contagem.sum()
+    labels = contagem.index
+    values = contagem.values
+    text = [f'{(v/total)*100:.1f}%<br>({v} n)' for v in values]
+
+    return go.Figure(
+        data=[go.Pie(labels=labels,
+                    values=values,
+                    marker_colors=cores,
+                    text=text,
+                    textinfo='label+text',
+                    hoverinfo='label+percent+value')],
+        layout=go.Layout(
+            title=titulo,
+            margin=dict(l=0, r=0, t=40, b=0)
+        )
+    )
+    
 # TODO: Aba Contratos
 with Contratos:
-
     # TODO Filtro lateral de Contratos
     status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
     Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
@@ -197,6 +215,8 @@ with Contratos:
 
     status_delta4 = ["Geral", "Tempo bom", "Atenção", "Atrasado"]
     Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
+
+    st.sidebar.write("-------------------------------------------------------------------------------------------------")
 
     #TODO: deltas selecionados de contratos
     if Delta1Filtro != "Geral":
@@ -306,6 +326,52 @@ with Contratos:
         # Exibe o gráfico no Streamlit
         st.altair_chart(chart, use_container_width=True)
 
+    #TODO: SLA
+
+    sla1, sla2, sla3, sla4 = st.columns(4)
+    with sla1:
+        # Dados de contagem
+        contagem = df_modificado['Tempo até resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+
+        # Exibe o gráfico no Streamlit
+        st.plotly_chart(
+            grafico_pizza(contagem, "Distribuição do Tempo até Resposta (Delta 1)", 
+                        ["gray", "green", "orange", "red", "lightblue"]),
+            use_container_width=True
+        )
+
+    with sla2:
+        # Dados de contagem
+        contagem = df_modificado['Tempo até aprovação'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+
+        # Exibe o gráfico no Streamlit
+        st.plotly_chart(
+            grafico_pizza(contagem, "Distribuição do Tempo até aprovação (Delta 2)", 
+                        ["gray", "green", "orange", "red", "lightblue"]),
+            use_container_width=True
+        )
+
+    with sla3:
+        # Dados de contagem
+        contagem = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+
+        # Exibe o gráfico no Streamlit
+        st.plotly_chart(
+            grafico_pizza(contagem, "Distribuição do Tempo da aprovação até a assinatura (Delta 3)", 
+                        ["gray", "green", "orange", "red", "lightblue"]),
+            use_container_width=True
+        )
+    with sla4:
+        # Dados de contagem
+        contagem = df_modificado['Tempo até a assinatura'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+
+        # Exibe o gráfico no Streamlit
+        st.plotly_chart(
+            grafico_pizza(contagem, "Distribuição do Tempo até a assinatura (Delta )", 
+                        ["gray", "green", "orange", "red", "lightblue"]),
+            use_container_width=True
+        )
+
 
     #TODO: tabela
     st.subheader("Tabela Geral")
@@ -319,6 +385,18 @@ with Contratos:
 
 #TODO Aba Orcamentos
 with ORCAMENTOS:
+
+    orcamentos_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+    orcamentos_Delta1Filtro = st.sidebar.selectbox("Status delta 1", orcamentos_delta1)
+
+    orcamentos_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+    orcamentos_Delta2Filtro = st.sidebar.selectbox("Status delta 2", orcamentos_delta2)
+
+    orcamentos_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+    orcamentos_Delta3Filtro = st.sidebar.selectbox("Status delta 2", orcamentos_delta3)
+
+    st.sidebar.write("---------------------------------------------------------")
+
     #TODO: Delta 1
     with st.expander("Delta 1"):
         st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
