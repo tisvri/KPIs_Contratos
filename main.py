@@ -7,6 +7,7 @@ import numpy as np
 from datetime import date
 import dados
 import altair as alt
+import itertools
 
 
 # TODO Configuração da página
@@ -18,115 +19,75 @@ df_modificado = df_geral.copy()
 
 today = pd.to_datetime(date.today()) 
 
-# TODO Funções para classificação de deltas
-def classificar_delta(df, coluna, faixas):
-    df[coluna] = pd.to_datetime(df[coluna], errors='coerce')  # Era to_timedelta, corrigido para to_datetime
-    df['Data do recebimento do contrato'] = pd.to_datetime(df['Data do recebimento do contrato'], errors='coerce')
+#TODO Fazendo a clacificacao dos deltas
+df_modificado['Tempo até resposta'] = pd.to_timedelta(df_modificado['Tempo até resposta'], errors='coerce')
+df_modificado['Tempo até aprovação'] = pd.to_timedelta(df_modificado['Tempo até aprovação'], errors='coerce')
+df_modificado['Tempo da aprovação até a assinatura'] = pd.to_timedelta(df_modificado['Tempo da aprovação até a assinatura'], errors='coerce')
+df_modificado['Tempo até a assinatura'] = pd.to_timedelta(df_modificado['Tempo até a assinatura'], errors='coerce')
 
-    resultado = []
-    for i, val in enumerate(df[coluna]):
-        if pd.isna(val):
-            if coluna == 'Tempo até resposta':
-                recebimento = df.loc[i, 'Data do recebimento do contrato']
-                if pd.notna(recebimento):
-                    temporesp = today - recebimento
-                    dias = temporesp.days
-                    for rotulo, minimo, maximo in faixas:
-                        if minimo <= dias < maximo:
-                            resultado.append(rotulo)
-                            break
-                    else:
-                        resultado.append(faixas[-1][0])
-                else:
-                    resultado.append("Sem informação")
+# Criando listas para armazenar os resultados
+tempo_resposta = []
+tempo_aprovacao = []
+tempo_ate_assinatura = []
+tempo_total_assinatura = []
 
-            elif coluna == 'Tempo até aprovação':
-                recebimento = df.loc[i, 'Data da resposta do contrato']
-                if pd.notna(recebimento):
-                    temporesp = today - recebimento
-                    dias = temporesp.days
-                    for rotulo, minimo, maximo in faixas:
-                        if minimo <= dias < maximo:
-                            resultado.append(rotulo)
-                            break
-                    else:
-                        resultado.append(faixas[-1][0])
-                else:
-                    resultado.append("Sem informação")
+for resp, apro, ateassi, assina in itertools.zip_longest(df_modificado['Tempo até resposta'], df_modificado['Tempo até aprovação'], df_modificado['Tempo da aprovação até a assinatura'], df_modificado['Tempo até a assinatura']):
+    # Tempo até resposta
+    if pd.isna(resp):
+        tempo_resposta.append('sem dados')
+    elif resp < pd.Timedelta(days=5):
+        tempo_resposta.append('No prazo') 
+    elif pd.Timedelta(days=5) <= resp <= pd.Timedelta(days=9):
+        tempo_resposta.append('Alerta')
+    elif pd.Timedelta(days=10) <= resp <= pd.Timedelta(days=14):
+        tempo_resposta.append('Urgente')
+    elif resp >= pd.Timedelta(days=15):
+        tempo_resposta.append('Atrasado')
 
-            elif coluna == 'Tempo da aprovação até a assinatura':
-                recebimento = df.loc[i, 'Data da aprovação do contrato']
-                if pd.notna(recebimento):
-                    temporesp = today - recebimento
-                    dias = temporesp.days
-                    for rotulo, minimo, maximo in faixas:
-                        if minimo <= dias < maximo:
-                            resultado.append(rotulo)
-                            break
-                    else:
-                        resultado.append(faixas[-1][0])
-                else:
-                    resultado.append("Sem informação")  
+       # Tempo até aprovação
+    if pd.isna(apro):
+        tempo_aprovacao.append('sem dados')
+    else:
+        base = resp if not pd.isna(resp) else pd.Timedelta(0)
+        diferenca = apro - base
+        if diferenca < pd.Timedelta(days=15):
+            tempo_aprovacao.append('No prazo') 
+        elif pd.Timedelta(days=15) <= diferenca <= pd.Timedelta(days=29):
+            tempo_aprovacao.append('Alerta')
+        elif diferenca >= pd.Timedelta(days=30):
+            tempo_aprovacao.append('Urgente')
 
-            elif coluna == 'Tempo até a assinatura':
-                recebimento = df.loc[i, 'Data da assinatura do contrato']
-                if pd.notna(recebimento):
-                    temporesp = today - recebimento
-                    dias = temporesp.days
-                    for rotulo, minimo, maximo in faixas:
-                        if minimo <= dias < maximo:
-                            resultado.append(rotulo)
-                            break
-                    else:
-                        resultado.append(faixas[-1][0])
-                else:
-                    resultado.append("Sem informação")
-                
-            
-            else:
-                resultado.append("Sem informação")
-        else:
-            delta = val - df.loc[i, 'Data do recebimento do contrato']
-            if pd.isna(delta):
-                resultado.append("Sem informação")
-            else:
-                dias = delta.days
-                for rotulo, minimo, maximo in faixas:
-                    if minimo <= dias < maximo:
-                        resultado.append(rotulo)
-                        break
-                else:
-                    resultado.append(faixas[-1][0])
-    return resultado
+    # Tempo da aprovação até a assinatura
+    if pd.isna(ateassi):
+        tempo_ate_assinatura.append('sem dados') 
+    elif ateassi < pd.Timedelta(days=5):
+        tempo_ate_assinatura.append('No prazo') 
+    elif pd.Timedelta(days=5) <= ateassi <= pd.Timedelta(days=9):
+        tempo_ate_assinatura.append('Alerta')
+    elif pd.Timedelta(days=10) <= ateassi <= pd.Timedelta(days=14):
+        tempo_ate_assinatura.append('Urgente')
+    elif ateassi >= pd.Timedelta(days=15):
+        tempo_ate_assinatura.append('Atrasado')
+
+    # Tempo total até a assinatura
+    if pd.isna(assina):
+        tempo_total_assinatura.append('sem dados') 
+    elif (assina) < pd.Timedelta(days=25):
+        tempo_total_assinatura.append('Bom') 
+    elif pd.Timedelta(days=25) <= (assina) <= pd.Timedelta(days=59):
+        tempo_total_assinatura.append('Atenção')
+    elif (assina) >= pd.Timedelta(days=60):
+        tempo_total_assinatura.append('Atrasado')
+
+# Atribuindo os resultados às novas colunas
+df_modificado['Tempo ate a resposta'] = tempo_resposta
+df_modificado['até aprovação'] = tempo_aprovacao
+df_modificado['Aprovação até a assinatura'] = tempo_ate_assinatura
+df_modificado['Até a assinatura'] = tempo_total_assinatura
 
 
-# TODO Aplicando as classificações
-df_modificado['Tempo até resposta'] = classificar_delta(df_geral, 'Tempo até resposta', [
-    ("No prazo", 0, 5),
-    ("Alerta", 5, 10),
-    ("Urgente", 10, 15),
-    ("Atrasado", 15, float('inf'))
-])
 
-df_modificado['Tempo até aprovação'] = classificar_delta(df_geral, 'Tempo até aprovação', [
-    ("No prazo", 0, 15),
-    ("Alerta", 15, 30),
-    ("Urgente", 30, float('inf'))
-])
-
-df_modificado['Tempo da aprovação até a assinatura'] = classificar_delta(df_geral, 'Tempo da aprovação até a assinatura', [
-    ("No prazo", 0, 5),
-    ("Alerta", 5, 10),
-    ("Urgente", 10, 15),
-    ("Atrasado", 15, float('inf'))
-])
-
-df_modificado['Tempo até a assinatura'] = classificar_delta(df_geral, 'Tempo até a assinatura', [
-    ("Tempo bom", 0, 25),
-    ("Atenção", 25, 60),
-    ("Atrasado", 60, float('inf'))
-])
-
+#TODO FILTROS LATERAIS:
 BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         ["Em andamento",
                         "Concluidos",
@@ -134,13 +95,52 @@ BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         index=None)
 
 
+status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
+
+pi_options = sorted(df_modificado['Investigador PI'].unique())
+PiFiltro = st.sidebar.multiselect("Selecione o PI", options=pi_options)
+
+status_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
+Delta2Filtro = st.sidebar.selectbox("Status delta 2", status_delta2)
+
+sponsor_options = sorted(df_modificado['Nome do patrocinador'].unique())
+sponsorFiltro = st.sidebar.multiselect("Selecione o Sponsor", options=sponsor_options)
+
+status_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
+
+status_delta4 = ["Geral", "Tempo bom", "Atenção", "Atrasado"]
+Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
 
 
+#TODO: Deltas selecionados
 
 if BaseDeDados == "Em andamento":
     df_modificado = df_modificado[~df_modificado['Status do contrato'].isin(['Assinado']) & ~df_modificado['Status do contrato'].isin(['Não recebido'])]
 elif BaseDeDados == "Concluidos":
     df_modificado = df_modificado[df_modificado['Status do contrato'].isin(['Assinado'])]
+
+if Delta1Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo até resposta'] == Delta1Filtro]
+
+if Delta2Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo até aprovação'] == Delta2Filtro]
+
+if Delta3Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo da aprovação até a assinatura'] == Delta3Filtro]
+
+if Delta4Filtro != "Geral":
+    df_modificado = df_modificado[df_modificado['Tempo até a assinatura'] == Delta4Filtro]
+
+if PiFiltro:
+        df_modificado = df_modificado[df_modificado['Investigador PI'].isin(PiFiltro)]
+
+if sponsorFiltro:
+    df_modificado = df_modificado[df_modificado['Nome do patrocinador'].isin(sponsorFiltro)]
+
+
+
 
 
 #TODO: Abas
@@ -198,45 +198,60 @@ def grafico_pizza(contagem, titulo, cores):
 # TODO: Aba Contratos
 with Contratos:
     # TODO Filtro lateral de Contratos
-    status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
-    Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
+    
 
-    pi_options = sorted(df_modificado['Investigador PI'].unique())
-    PiFiltro = st.sidebar.multiselect("Selecione o PI", options=pi_options)
 
-    status_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
-    Delta2Filtro = st.sidebar.selectbox("Status delta 2", status_delta2)
 
-    sponsor_options = sorted(df_modificado['Nome do patrocinador'].unique())
-    sponsorFiltro = st.sidebar.multiselect("Selecione o Sponsor", options=sponsor_options)
 
-    status_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
-    Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
 
-    status_delta4 = ["Geral", "Tempo bom", "Atenção", "Atrasado"]
-    Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
 
-    st.sidebar.write("-------------------------------------------------------------------------------------------------")
 
-    #TODO: deltas selecionados de contratos
-    if Delta1Filtro != "Geral":
-        df_modificado = df_modificado[df_modificado['Tempo até resposta'] == Delta1Filtro]
 
-    if Delta2Filtro != "Geral":
-        df_modificado = df_modificado[df_modificado['Tempo até aprovação'] == Delta2Filtro]
 
-    if Delta3Filtro != "Geral":
-        df_modificado = df_modificado[df_modificado['Tempo da aprovação até a assinatura'] == Delta3Filtro]
 
-    if Delta4Filtro != "Geral":
-        df_modificado = df_modificado[df_modificado['Tempo até a assinatura'] == Delta4Filtro]
 
-    #TODO: Outros filtros selecionados de contratos
-    if PiFiltro:
-        df_modificado = df_modificado[df_modificado['Investigador PI'].isin(PiFiltro)]
 
-    if sponsorFiltro:
-        df_modificado = df_modificado[df_modificado['Nome do patrocinador'].isin(sponsorFiltro)]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     #TODO: Delta 1
@@ -377,7 +392,8 @@ with Contratos:
     st.subheader("Tabela Geral")
     colunas_disponiveis = [col for col in [
         "Protocolo", "Centro coordenador", "Nome do patrocinador", "Investigador PI",
-        "Status do contrato", "Tempo até resposta", "Tempo até aprovação", "Tempo da aprovação até a assinatura", "Tempo até a assinatura", "Obsevações do contrato"
+        "Status do contrato", "Tempo até resposta", "Tempo até aprovação", "Tempo da aprovação até a assinatura", "Tempo até a assinatura", "Obsevações do contrato", "Tempo ate a resposta",
+        "até aprovação", "Aprovação até a assinatura","Até a assinatura"
     ] if col in df_modificado.columns]
 
     colunas_selecionadas = st.multiselect("Selecione as colunas para visualizar:", colunas_disponiveis, default=colunas_disponiveis)
@@ -385,21 +401,20 @@ with Contratos:
 
 #TODO Aba Orcamentos
 with ORCAMENTOS:
+    st.sidebar.write("-------------------------------------------------------------")
+    # orcamentos_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+    # orcamentos_Delta1Filtro = st.sidebar.selectbox("TEMPO ATÉ RESPOSTA DO ORÇAMENTO", orcamentos_delta1)
 
-    orcamentos_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
-    orcamentos_Delta1Filtro = st.sidebar.selectbox("Status delta 1", orcamentos_delta1)
+    # orcamentos_Delta2Filtro = st.sidebar.selectbox("DECORRIDO DE RESPOSTA ATÉ APROVADO EM ORÇAMENTO", orcamentos_delta1)
 
-    orcamentos_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
-    orcamentos_Delta2Filtro = st.sidebar.selectbox("Status delta 2", orcamentos_delta2)
+    # orcamentos_Delta3Filtro = st.sidebar.selectbox("TEMPO NO ORÇAMENTO", orcamentos_delta1)
 
-    orcamentos_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
-    orcamentos_Delta3Filtro = st.sidebar.selectbox("Status delta 2", orcamentos_delta3)
+    # if orcamentos_delta1 != "Geral":
+    #     df_modificado = df_modificado[df_modificado['TEMPO ATÉ RESPOSTA DO ORÇAMENTO'] == orcamentos_delta1]
 
-    st.sidebar.write("---------------------------------------------------------")
-
-    #TODO: Delta 1
-    with st.expander("Delta 1"):
-        st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
+    # #TODO: Delta 1
+    # with st.expander("Delta 1"):
+    #     st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
         
 
     with st.expander("Delta 2"):
