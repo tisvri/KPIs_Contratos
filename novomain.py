@@ -1,5 +1,6 @@
 import streamlit as st
 import dados
+import graficos
 import pandas as pd
 import itertools
 
@@ -118,6 +119,8 @@ BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         "Geral",],
                         index=None)
 
+
+st.sidebar.write("------------Contratos------------")
 
 status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
 Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)

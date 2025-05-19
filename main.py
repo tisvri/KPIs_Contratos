@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import date
 import dados
+import graficos
 import altair as alt
 import itertools
 
@@ -17,24 +18,39 @@ st.set_page_config(page_title="KPIs", layout="wide")
 df_geral = dados.df_geral.copy()
 df_modificado = df_geral.copy()
 
+hoje = pd.Timestamp.today()
+
 today = pd.to_datetime(date.today()) 
 
 #TODO Fazendo a clacificacao dos deltas
+df_modificado['Data do recebimento do contrato'] = pd.to_datetime(df_modificado['Data do recebimento do contrato'], errors='coerce')
 df_modificado['Tempo até resposta'] = pd.to_timedelta(df_modificado['Tempo até resposta'], errors='coerce')
 df_modificado['Tempo até aprovação'] = pd.to_timedelta(df_modificado['Tempo até aprovação'], errors='coerce')
 df_modificado['Tempo da aprovação até a assinatura'] = pd.to_timedelta(df_modificado['Tempo da aprovação até a assinatura'], errors='coerce')
 df_modificado['Tempo até a assinatura'] = pd.to_timedelta(df_modificado['Tempo até a assinatura'], errors='coerce')
 
 # Criando listas para armazenar os resultados
+
 tempo_resposta = []
 tempo_aprovacao = []
 tempo_ate_assinatura = []
 tempo_total_assinatura = []
 
-for resp, apro, ateassi, assina in itertools.zip_longest(df_modificado['Tempo até resposta'], df_modificado['Tempo até aprovação'], df_modificado['Tempo da aprovação até a assinatura'], df_modificado['Tempo até a assinatura']):
+for cad, resp, apro, ateassi, assina, resporçã, ateapro, temporça in itertools.zip_longest(df_modificado['Data do recebimento do contrato'], df_modificado['Tempo até resposta'], df_modificado['Tempo até aprovação'], df_modificado['Tempo da aprovação até a assinatura'], df_modificado['Tempo até a assinatura'], df_modificado['Tempo até resposta do orçamento'], df_modificado['Tempo decorrido de resposta até aprovado em orçamento'], df_modificado['Tempo no orçamento']):
     # Tempo até resposta
     if pd.isna(resp):
-        tempo_resposta.append('sem dados')
+        if pd.isna(cad):
+            tempo_resposta.append('Sem informação')
+        else:
+            diff = hoje - cad
+            if diff < pd.Timedelta(days=5):
+                tempo_resposta.append('No prazo')
+            elif diff <= pd.Timedelta(days=9):
+                tempo_resposta.append('Alerta')
+            elif diff <= pd.Timedelta(days=14):
+                tempo_resposta.append('Urgente')
+            else:
+                tempo_resposta.append('Atrasado')
     elif resp < pd.Timedelta(days=5):
         tempo_resposta.append('No prazo') 
     elif pd.Timedelta(days=5) <= resp <= pd.Timedelta(days=9):
@@ -44,9 +60,18 @@ for resp, apro, ateassi, assina in itertools.zip_longest(df_modificado['Tempo at
     elif resp >= pd.Timedelta(days=15):
         tempo_resposta.append('Atrasado')
 
-       # Tempo até aprovação
+    # Tempo até aprovação
     if pd.isna(apro):
-        tempo_aprovacao.append('sem dados')
+        if pd.isna(resp):
+            tempo_aprovacao.append('Sem informação')
+        else:
+            diff = hoje - resp
+            if diff < pd.Timedelta(days=15):
+                tempo_aprovacao.append('No prazo')
+            elif pd.Timedelta(days=15) <= diff <= pd.Timedelta(days=29):
+                tempo_aprovacao.append('Alerta')
+            elif diff >= pd.Timedelta(days=30):
+                tempo_aprovacao.append('Urgente')
     else:
         base = resp if not pd.isna(resp) else pd.Timedelta(0)
         diferenca = apro - base
@@ -59,7 +84,20 @@ for resp, apro, ateassi, assina in itertools.zip_longest(df_modificado['Tempo at
 
     # Tempo da aprovação até a assinatura
     if pd.isna(ateassi):
-        tempo_ate_assinatura.append('sem dados') 
+        if pd.isna(apro):
+            tempo_ate_assinatura.append('Sem informação') 
+        else:
+            base = resp if not pd.isna(resp) else pd.Timedelta(0)
+            diferenca = apro - base
+            if diferenca < pd.Timedelta(days=5):
+                tempo_ate_assinatura.append('No prazo') 
+            elif pd.Timedelta(days=5) <= diferenca <= pd.Timedelta(days=9):
+                tempo_ate_assinatura.append('Alerta')
+            elif pd.Timedelta(days=10) <= diferenca <= pd.Timedelta(days=14):
+                tempo_ate_assinatura.append('Urgente')
+            elif diferenca >= pd.Timedelta(days=30):
+                tempo_ate_assinatura.append('Atrasado')
+
     elif ateassi < pd.Timedelta(days=5):
         tempo_ate_assinatura.append('No prazo') 
     elif pd.Timedelta(days=5) <= ateassi <= pd.Timedelta(days=9):
@@ -71,7 +109,7 @@ for resp, apro, ateassi, assina in itertools.zip_longest(df_modificado['Tempo at
 
     # Tempo total até a assinatura
     if pd.isna(assina):
-        tempo_total_assinatura.append('sem dados') 
+        tempo_total_assinatura.append('Sem informação')
     elif (assina) < pd.Timedelta(days=25):
         tempo_total_assinatura.append('Bom') 
     elif pd.Timedelta(days=25) <= (assina) <= pd.Timedelta(days=59):
@@ -94,6 +132,7 @@ BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         "Geral",],
                         index=None)
 
+st.sidebar.write("---------------Contratos---------------")
 
 status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
 Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
@@ -113,6 +152,8 @@ Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
 status_delta4 = ["Geral", "Tempo bom", "Atenção", "Atrasado"]
 Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
 
+st.sidebar.write("--------------Orçamentos--------------")
+
 
 #TODO: Deltas selecionados
 
@@ -122,16 +163,16 @@ elif BaseDeDados == "Concluidos":
     df_modificado = df_modificado[df_modificado['Status do contrato'].isin(['Assinado'])]
 
 if Delta1Filtro != "Geral":
-    df_modificado = df_modificado[df_modificado['Tempo até resposta'] == Delta1Filtro]
+    df_modificado = df_modificado[df_modificado['Tempo ate a resposta'] == Delta1Filtro]
 
 if Delta2Filtro != "Geral":
-    df_modificado = df_modificado[df_modificado['Tempo até aprovação'] == Delta2Filtro]
+    df_modificado = df_modificado[df_modificado['até aprovação'] == Delta2Filtro]
 
 if Delta3Filtro != "Geral":
-    df_modificado = df_modificado[df_modificado['Tempo da aprovação até a assinatura'] == Delta3Filtro]
+    df_modificado = df_modificado[df_modificado['Aprovação até a assinatura'] == Delta3Filtro]
 
 if Delta4Filtro != "Geral":
-    df_modificado = df_modificado[df_modificado['Tempo até a assinatura'] == Delta4Filtro]
+    df_modificado = df_modificado[df_modificado['Até a assinatura'] == Delta4Filtro]
 
 if PiFiltro:
         df_modificado = df_modificado[df_modificado['Investigador PI'].isin(PiFiltro)]
@@ -146,113 +187,9 @@ if sponsorFiltro:
 #TODO: Abas
 Contratos, ORCAMENTOS, REGULATORIO, GERAL = st.tabs(["**Contratos**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
 
-# Função de gráfico de barras
-def grafico_barras(contagem, titulo, cores):
-    return go.Figure(
-        data=[go.Bar(x=contagem.index, y=contagem.values, marker_color=cores)],
-        layout=go.Layout(
-            title=titulo,
-            xaxis_title="Classificação",
-            yaxis_title="Quantidade",
-            bargap=0.4
-        )
-    )
-
-# Função de gráfico horizontal por PI
-def grafico_horizontal_por_coluna(coluna, titulo):
-    contagem = df_modificado[coluna].value_counts()
-    fig = go.Figure(go.Bar(
-        x=contagem.values,
-        y=contagem.index,
-        orientation='h',
-        marker_color='indianred'
-    ))
-    fig.update_layout(
-        title=titulo,
-        xaxis_title='Quantidade',
-        yaxis_title=coluna,
-        template='plotly_white',
-        yaxis=dict(autorange="reversed")
-    )
-    return fig
-
-def grafico_pizza(contagem, titulo, cores):
-    total = contagem.sum()
-    labels = contagem.index
-    values = contagem.values
-    text = [f'{(v/total)*100:.1f}%<br>({v} n)' for v in values]
-
-    return go.Figure(
-        data=[go.Pie(labels=labels,
-                    values=values,
-                    marker_colors=cores,
-                    text=text,
-                    textinfo='label+text',
-                    hoverinfo='label+percent+value')],
-        layout=go.Layout(
-            title=titulo,
-            margin=dict(l=0, r=0, t=40, b=0)
-        )
-    )
     
 # TODO: Aba Contratos
 with Contratos:
-    # TODO Filtro lateral de Contratos
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     #TODO: Delta 1
     with st.expander("Delta 1"):
@@ -260,10 +197,10 @@ with Contratos:
 
     graf1, graf2 = st.columns(2)
     with graf1:
-        contagem = df_modificado['Tempo até resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
-        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
+        contagem = df_modificado['Tempo ate a resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
     with graf2:
-        st.plotly_chart(grafico_horizontal_por_coluna('Investigador PI', 'Contratos por Investigador PI'), use_container_width=True)
+        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Investigador PI', 'Contratos por Investigador PI'), use_container_width=True)
 
     #TODO: Delta 2
     with st.expander("Delta 2"):
@@ -271,10 +208,10 @@ with Contratos:
 
     graf3, graf4 = st.columns(2)
     with graf3:
-        contagem = df_modificado['Tempo até aprovação'].value_counts().reindex(["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0)
-        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 2", ["gray", "green", "orange", "red"]), use_container_width=True)
+        contagem = df_modificado['até aprovação'].value_counts().reindex(["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0)
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 2", ["gray", "green", "orange", "red"]), use_container_width=True)
     with graf4:
-        st.plotly_chart(grafico_horizontal_por_coluna('Nome do patrocinador', 'Contratos por Sponsor'), use_container_width=True)
+        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Nome do patrocinador', 'Contratos por Sponsor'), use_container_width=True)
 
     #TODO: Delta 3
     with st.expander("Delta 3"):
@@ -282,8 +219,8 @@ with Contratos:
 
     graf5, graf6 = st.columns(2)
     with graf5:
-        contagem = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(status_delta3[1:], fill_value=0)
-        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
+        contagem = df_modificado['Aprovação até a assinatura'].value_counts().reindex(status_delta3[1:], fill_value=0)
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
     with graf6:
 
        # Agrupamento e contagem
@@ -314,28 +251,28 @@ with Contratos:
 
     graf7, graf8 = st.columns(2)
     with graf7:
-        contagem = df_modificado['Tempo até a assinatura'].value_counts().reindex(["Tempo bom", "Atenção", "Atrasado"], fill_value=0)
-        st.plotly_chart(grafico_barras(contagem, "Classificação do Delta 4", ["green", "orange", "red"]), use_container_width=True)
+        contagem = df_modificado['Até a assinatura'].value_counts().reindex(["Sem informação","Tempo bom", "Atenção", "Atrasado"], fill_value=0)
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 4", ["gray","green", "orange", "red"]), use_container_width=True)
     with graf8:
         # Agrupamento e contagem
-        df_grouped = df_modificado.groupby(['Status do contrato', 'Tempo até resposta']).size().reset_index(name='Quantidade')
+        df_grouped = df_modificado.groupby(['Status do contrato', 'Tempo ate a resposta']).size().reset_index(name='Quantidade')
 
         # Renomeia colunas para facilitar o uso no Streamlit
         df_grouped = df_grouped.rename(columns={
             'Status do contrato': 'Status',
-            'Tempo até resposta': 'Tempo até resposta'
+            'Tempo ate a resposta': 'Tempo ate a resposta'
         })
 
         # Gráfico de barras horizontais com Altair
         chart = alt.Chart(df_grouped).mark_bar().encode(
             y=alt.Y('Status:N', sort='-x', title='Status do Contrato'),
             x=alt.X('Quantidade:Q', title='Quantidade'),
-            color=alt.Color('Tempo até resposta:N', title='Tempo até Resposta'),
-            tooltip=['Status', 'Tempo até resposta', 'Quantidade']
+            color=alt.Color('Tempo ate a resposta:N', title='Tempo ate a resposta'),
+            tooltip=['Status', 'Tempo ate a resposta', 'Quantidade']
         ).properties(
             width='container',
             height=500,
-            title='Quantidade por Status do Contrato e Tempo até Resposta'
+            title='Quantidade por Status do Contrato e Tempo ate a resposta'
         )
 
         # Exibe o gráfico no Streamlit
@@ -346,44 +283,44 @@ with Contratos:
     sla1, sla2, sla3, sla4 = st.columns(4)
     with sla1:
         # Dados de contagem
-        contagem = df_modificado['Tempo até resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        contagem = df_modificado['Tempo ate a resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            grafico_pizza(contagem, "Distribuição do Tempo até Resposta (Delta 1)", 
+            graficos.grafico_pizza(contagem, "Distribuição do Tempo até Resposta (Delta 1)", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True
         )
 
     with sla2:
         # Dados de contagem
-        contagem = df_modificado['Tempo até aprovação'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        contagem = df_modificado['até aprovação'].value_counts().reindex(status_opcoes[1:], fill_value=0)
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            grafico_pizza(contagem, "Distribuição do Tempo até aprovação (Delta 2)", 
+            graficos.grafico_pizza(contagem, "Distribuição do Tempo até aprovação (Delta 2)", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True
         )
 
     with sla3:
         # Dados de contagem
-        contagem = df_modificado['Tempo da aprovação até a assinatura'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        contagem = df_modificado['Aprovação até a assinatura'].value_counts().reindex(status_opcoes[1:], fill_value=0)
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            grafico_pizza(contagem, "Distribuição do Tempo da aprovação até a assinatura (Delta 3)", 
+            graficos.grafico_pizza(contagem, "Distribuição do Tempo da aprovação até a assinatura (Delta 3)", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True
         )
     with sla4:
         # Dados de contagem
-        contagem = df_modificado['Tempo até a assinatura'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        contagem = df_modificado['Até a assinatura'].value_counts().reindex(["Sem informação","Tempo bom", "Atenção", "Atrasado"], fill_value=0)
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            grafico_pizza(contagem, "Distribuição do Tempo até a assinatura (Delta )", 
-                        ["gray", "green", "orange", "red", "lightblue"]),
+            graficos.grafico_pizza(contagem, "Distribuição do Tempo até a assinatura (Delta )", 
+                        [ "gray", "green","orange", "red", "lightblue"]),
             use_container_width=True
         )
 
@@ -412,10 +349,14 @@ with ORCAMENTOS:
     # if orcamentos_delta1 != "Geral":
     #     df_modificado = df_modificado[df_modificado['TEMPO ATÉ RESPOSTA DO ORÇAMENTO'] == orcamentos_delta1]
 
-    # #TODO: Delta 1
-    # with st.expander("Delta 1"):
-    #     st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
+    #TODO: Delta 1
+    with st.expander("Delta 1"):
+        st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
         
+    orca1, orca2 = st.columns(2)
+    with orca1:
+        contagem = df_modificado['Tempo ate a resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
 
     with st.expander("Delta 2"):
         st.markdown("Tempo decorrido de resposta até aprovado em orçamento:<br>", unsafe_allow_html=True)
