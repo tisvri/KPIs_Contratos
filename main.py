@@ -36,7 +36,7 @@ tempo_aprovacao = []
 tempo_ate_assinatura = []
 tempo_total_assinatura = []
 
-for cad, resp, apro, ateassi, assina, resporçã, ateapro, temporça in itertools.zip_longest(df_modificado['Data do recebimento do contrato'], df_modificado['Tempo até resposta'], df_modificado['Tempo até aprovação'], df_modificado['Tempo da aprovação até a assinatura'], df_modificado['Tempo até a assinatura'], df_modificado['Tempo até resposta do orçamento'], df_modificado['Tempo decorrido de resposta até aprovado em orçamento'], df_modificado['Tempo no orçamento']):
+for cad, resp, apro, ateassi, assina in itertools.zip_longest(df_modificado['Data do recebimento do contrato'], df_modificado['Tempo até resposta'], df_modificado['Tempo até aprovação'], df_modificado['Tempo da aprovação até a assinatura'], df_modificado['Tempo até a assinatura']):
     # Tempo até resposta
     if pd.isna(resp):
         if pd.isna(cad):
@@ -128,7 +128,7 @@ df_modificado['Até a assinatura'] = tempo_total_assinatura
 #TODO FILTROS LATERAIS:
 BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         ["Em andamento",
-                        "Concluidos",
+                        "Assinado",
                         "Geral",],
                         index=None)
 
@@ -154,12 +154,32 @@ Delta4Filtro = st.sidebar.selectbox("Status delta 4", status_delta4)
 
 st.sidebar.write("--------------Orçamentos--------------")
 
+orcamentos_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+orcamentos_Delta1Filtro = st.sidebar.selectbox("TEMPO ATÉ RESPOSTA DO ORÇAMENTO", orcamentos_delta1)
+
+orcamentos_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+orcamentos_Delta2Filtro = st.sidebar.selectbox("DECORRIDO DE RESPOSTA ATÉ APROVADO EM ORÇAMENTO", orcamentos_delta2)
+
+orcamentos_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+orcamentos_Delta3Filtro = st.sidebar.selectbox("TEMPO NO ORÇAMENTO", orcamentos_delta3)
+
+st.sidebar.write("--------------Regulatório--------------")
+
+regulatorio_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+regulatorio_Delta1Filtro = st.sidebar.selectbox("Tempo no regulatório", regulatorio_delta1)
+
+st.sidebar.write("--------------Geral--------------")
+
+geral_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
+geral_Delta1Filtro = st.sidebar.selectbox("Tempo no regulatório", geral_delta1)
+
+
 
 #TODO: Deltas selecionados
 
 if BaseDeDados == "Em andamento":
     df_modificado = df_modificado[~df_modificado['Status do contrato'].isin(['Assinado']) & ~df_modificado['Status do contrato'].isin(['Não recebido'])]
-elif BaseDeDados == "Concluidos":
+elif BaseDeDados == "Assinado":
     df_modificado = df_modificado[df_modificado['Status do contrato'].isin(['Assinado'])]
 
 if Delta1Filtro != "Geral":
@@ -338,38 +358,29 @@ with Contratos:
 
 #TODO Aba Orcamentos
 with ORCAMENTOS:
-    st.sidebar.write("-------------------------------------------------------------")
-    # orcamentos_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
-    # orcamentos_Delta1Filtro = st.sidebar.selectbox("TEMPO ATÉ RESPOSTA DO ORÇAMENTO", orcamentos_delta1)
-
-    # orcamentos_Delta2Filtro = st.sidebar.selectbox("DECORRIDO DE RESPOSTA ATÉ APROVADO EM ORÇAMENTO", orcamentos_delta1)
-
-    # orcamentos_Delta3Filtro = st.sidebar.selectbox("TEMPO NO ORÇAMENTO", orcamentos_delta1)
-
-    # if orcamentos_delta1 != "Geral":
-    #     df_modificado = df_modificado[df_modificado['TEMPO ATÉ RESPOSTA DO ORÇAMENTO'] == orcamentos_delta1]
 
     #TODO: Delta 1
     with st.expander("Delta 1"):
-        st.markdown("Tempo até resposta do orçamento:<br>", unsafe_allow_html=True)
+        st.markdown("Tempo até resposta do orçamento:<br>< 5 dias: No prazo<br>5 - 9 dias: Alerta<br> 10 - 14 dias: Urgente<br>15+ dias: Atrasado", unsafe_allow_html=True)
         
     orca1, orca2 = st.columns(2)
     with orca1:
-        contagem = df_modificado['Tempo ate a resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True)
+        pass
+    with orca2:
+        pass
 
     with st.expander("Delta 2"):
-        st.markdown("Tempo decorrido de resposta até aprovado em orçamento:<br>", unsafe_allow_html=True)
+        st.markdown("Tempo decorrido de resposta até aprovado em orçamento:<br>< 15 dias: No prazo<br>15 - 29 dias: Alerta<br>30+ dias: Urgente", unsafe_allow_html=True)
 
     with st.expander("Delta 3"):
-        st.markdown("Tempo no orçamento:<br>", unsafe_allow_html=True)
+        st.markdown("Tempo no orçamento:<br>< 19 dias: Bom<br>20 - 44 dias: Atenção<br>45+ dias: Atrasado", unsafe_allow_html=True)
 
 #TODO Aba regulatorio
 with REGULATORIO:
     with st.expander("Delta"):
-        st.markdown("Tempo no regulatório:", unsafe_allow_html=True)
+        st.markdown("Tempo no regulatório:<br>< 15 dias: No prazo<br>15 - 29 dias: Alerta<br>30+ dias: Urgente", unsafe_allow_html=True)
 
 #TODO Aba geral
 with GERAL:
     with st.expander("Geral"):
-        st.markdown(".:", unsafe_allow_html=True)
+        st.markdown("Tempo até ativação do centro:<br>< 15 dias: No prazo<br>15 - 29 dias: Alerta<br>30+ dias: Urgente", unsafe_allow_html=True)
