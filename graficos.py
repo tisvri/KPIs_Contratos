@@ -37,7 +37,6 @@ def grafico_pizza(contagem, titulo, cores):
     total = contagem_filtrada.sum()
     labels = contagem_filtrada.index
     values = contagem_filtrada.values
-    text = [f'{(v/total)*100:.1f}%<br>({v} n)' for v in values]
 
     # Ajusta cores para corresponder apenas aos valores filtrados
     cores_filtradas = [cores[list(contagem.index).index(label)] for label in labels]
@@ -47,7 +46,7 @@ def grafico_pizza(contagem, titulo, cores):
             labels=labels,
             values=values,
             marker_colors=cores_filtradas,
-            text=text,
+            
             textinfo='label+text',
             hoverinfo='label+percent+value'
         )],

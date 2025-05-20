@@ -9,7 +9,7 @@ df_modificado = df_geral.copy()
 hoje = pd.Timestamp.today()
 
 def deltaContratos():
-
+    #-----------------------------------CONTRATOS-------------------------------------
     #TODO Fazendo a clacificacao dos deltas
     df_modificado['Data do recebimento do contrato'] = pd.to_datetime(df_modificado['Data do recebimento do contrato'], errors='coerce')
     df_modificado['Tempo até resposta'] = pd.to_timedelta(df_modificado['Tempo até resposta'], errors='coerce')
@@ -112,7 +112,7 @@ def deltaContratos():
     df_modificado['Até a assinatura'] = tempo_total_assinatura
 
 
-def deltaOrcamentos():
+#-------------------------------------Orçamentos-----------------------------------
     #TODO Fazendo a clacificacao dos deltas
     df_modificado['Tempo até resposta do orçamento'] = pd.to_timedelta(df_modificado['Tempo até resposta do orçamento'], errors='coerce')
     df_modificado['Tempo decorrido de resposta até aprovado em orçamento'] = pd.to_timedelta(df_modificado['Tempo decorrido de resposta até aprovado em orçamento'], errors='coerce')
@@ -156,8 +156,14 @@ def deltaOrcamentos():
         elif temporca >= pd.Timedelta(days=45):
             tempo_total_orcamento.append('Atrasado')
 
+    # Atribuindo os resultados às novas colunas
+    df_modificado['resposta do orçamento'] = tempo_resposta_orcamento
+    df_modificado['resposta até aprovado em orçamento'] = tempo_resp_ate_aprocao_orcamento
+    df_modificado['Tempo geral no orçamento'] = tempo_total_orcamento
 
-def deltaRegulatorio():
+
+#-----------------------------------REGULATORIO-------------------------------------
+
     #TODO Fazendo a clacificacao dos deltas
     df_modificado['Tempo no regulatório'] = pd.to_timedelta(df_modificado['Tempo no regulatório'], errors='coerce')
 
@@ -175,8 +181,13 @@ def deltaRegulatorio():
         elif tempregu >= pd.Timedelta(days=29):
             tempo_regulatorio.append('Urgente')
 
+        # Atribuindo os resultados às novas colunas
+    df_modificado['Tempo regulatório'] = tempo_regulatorio
 
-def ativacaoCentro():
+
+
+#-------------------------------------GERAL-----------------------------------
+
     #TODO Fazendo a clacificacao dos deltas
     df_modificado['Tempo até ativação do centro após todo o fluxo'] = pd.to_timedelta(df_modificado['Tempo até ativação do centro após todo o fluxo'], errors='coerce')
 
@@ -197,3 +208,6 @@ def ativacaoCentro():
         elif tempcentro >= pd.Timedelta(days=29):
             tempo_ativacao.append('Urgente')
 
+    df_modificado['ativação do centro após todo o fluxo'] = tempo_ativacao
+
+    return df_modificado
