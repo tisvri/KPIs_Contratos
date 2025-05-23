@@ -47,7 +47,7 @@ def grafico_pizza(contagem, titulo, cores):
             values=values,
             marker_colors=cores_filtradas,
             
-            textinfo='label+text',
+            textinfo='value',
             hoverinfo='label+percent+value'
         )],
         layout=go.Layout(

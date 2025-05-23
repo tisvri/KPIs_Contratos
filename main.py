@@ -16,7 +16,7 @@ st.set_page_config(page_title="KPIs", layout="wide")
 # TODO Carregamento de dados
 df_modi = deltas.deltaContratos()
 df_modificado = df_modi.copy()
-print(df_modificado)
+#print(df_modificado)
 
 #TODO FILTROS LATERAIS:
 BaseDeDados = st.sidebar.radio("Selecione a base de dados",
@@ -66,7 +66,7 @@ regulatorio_Delta1Filtro = st.sidebar.selectbox("Tempo no regulatório", regulat
 #TODO: Deltas selecionados
 
 if BaseDeDados == "Em andamento":
-    df_modificado = df_modificado[~df_modificado['Status do contrato'].isin(['Assinado']) & ~df_modificado['Status do contrato'].isin(['Não recebido'])]
+    df_modificado = df_modificado[~df_modificado['Status do contrato'].isin(['Assinado'])]
 elif BaseDeDados == "Assinado":
     df_modificado = df_modificado[df_modificado['Status do contrato'].isin(['Assinado'])]
 
@@ -123,7 +123,39 @@ with CONTRATOS:
         contagem = df_modificado['Tempo ate a resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
         st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="1")
     with graf2:
-        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Investigador PI', 'Contratos por Investigador PI'), use_container_width=True, key="2")
+        #       st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Investigador PI', 'Contratos por Investigador PI'), use_container_width=True, key="2")
+
+        # Agrupamento e contagem
+        df_grouped = df_modificado.groupby(['Tempo ate a resposta', 'Investigador PI']).size().reset_index(name='Quantidade')
+
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Investigador PI': 'Investigador',
+            'Tempo ate a resposta': 'status'
+        })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "No prazo": "green",
+            "Alerta": "orange",
+            "Urgente": "red",
+            "Atrasado": "lightblue"
+        }
+        
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Investigador:N', sort='-x'),
+            x='Quantidade:Q',
+            #color='status:N',
+            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+
+            tooltip=['Investigador', 'status', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
+        )
+
+        st.altair_chart(chart, use_container_width=True, key="60")
 
     #TODO: Delta 2
     with st.expander("Delta 2"):
@@ -378,7 +410,7 @@ with GERAL:
     geral1, geral2 = st.columns(2)
     with geral1:
         contagem = df_modificado['ativação do centro após todo o fluxo'].value_counts().reindex(["Sem informação","No prazo", "Alerta", "Urgente"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação delta geral", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="21")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação ativação de centro", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="21")
     with geral2:
         pass
 
