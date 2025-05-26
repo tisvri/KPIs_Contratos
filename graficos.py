@@ -7,8 +7,18 @@ def grafico_barras(contagem, titulo, cores):
         data=[go.Bar(x=contagem.index, y=contagem.values, marker_color=cores)],
         layout=go.Layout(
             title=titulo,
-            xaxis_title="Classificação",
-            yaxis_title="Quantidade",
+            xaxis=dict(
+                title="Classificação",
+                showgrid=False,
+                zeroline=False,
+                showline=True
+            ),
+            yaxis=dict(
+                title="Quantidade",
+                showgrid=False,
+                zeroline=False,
+                showline=True
+            ),
             bargap=0.4
         )
     )
@@ -48,7 +58,7 @@ def grafico_pizza(contagem, titulo, cores):
             marker_colors=cores_filtradas,
             
             textinfo='value',
-            hoverinfo='label+percent+value'
+            hoverinfo='percent+value'
         )],
         layout=go.Layout(
             title=titulo,

@@ -218,7 +218,7 @@ ano_limite = datetime(datetime.now().year - 2, 1, 1)
 
 # TODO: tirando filtrando o Dim_protocolo
 
-#dim_protocolo = dim_protocolo[dim_protocolo['data_cadastro'] > ano_limite]
+dim_protocolo = dim_protocolo[dim_protocolo['data_cadastro'] > ano_limite]
 dim_protocolo = dim_protocolo[dim_protocolo['dados_tipo_de_iniciativa'] == 'Patrocinador']
 dim_protocolo = dim_protocolo[(dim_protocolo['status'].isin(['Aprovado pelo CEP'])) | (dim_protocolo['status'].isin(['Em apreciação Ética'])) | (dim_protocolo['status'].isin(['Fase Contratual'])) | (dim_protocolo['status'].isin(['Recrutamento aberto'])) | (dim_protocolo['status'].isin(['Qualificado'])) | (dim_protocolo['status'].isin(['Aguardando Ativação do Centro']))]
 

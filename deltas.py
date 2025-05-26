@@ -150,7 +150,7 @@ def deltaContratos():
         if pd.isna(temporca):
             tempo_total_orcamento.append('Sem informação')
         elif temporca <= pd.Timedelta(days=19):
-            tempo_total_orcamento.append('Bom')
+            tempo_total_orcamento.append('Tempo bom')
         elif pd.Timedelta(days=20) <= temporca <= pd.Timedelta(days=44):
             tempo_total_orcamento.append('Atenção')
         elif temporca >= pd.Timedelta(days=45):

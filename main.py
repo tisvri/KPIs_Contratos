@@ -25,19 +25,25 @@ BaseDeDados = st.sidebar.radio("Selecione a base de dados",
                         "Geral",],
                         index=None)
 
+protocolo_options = sorted(df_modificado['Protocolo'].unique())
+protocoloFiltro = st.sidebar.multiselect("Selecione o Protocolo", options=protocolo_options)
+
+centro_options = sorted(df_modificado['Centro coordenador'].unique())
+CentroFiltro = st.sidebar.multiselect("Selecione o Centro", options=centro_options, key=68)
+
+pi_options = sorted(df_modificado['Investigador PI'].unique())
+PiFiltro = st.sidebar.multiselect("Selecione o PI", options=pi_options)
+
+sponsor_options = sorted(df_modificado['Nome do patrocinador'].unique())
+sponsorFiltro = st.sidebar.multiselect("Selecione o Sponsor", options=sponsor_options)
+
 st.sidebar.write("---------------Contratos---------------")
 
 status_opcoes = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
 Delta1Filtro = st.sidebar.selectbox("Status delta 1", status_opcoes)
 
-pi_options = sorted(df_modificado['Investigador PI'].unique())
-PiFiltro = st.sidebar.multiselect("Selecione o PI", options=pi_options)
-
 status_delta2 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
 Delta2Filtro = st.sidebar.selectbox("Status delta 2", status_delta2)
-
-sponsor_options = sorted(df_modificado['Nome do patrocinador'].unique())
-sponsorFiltro = st.sidebar.multiselect("Selecione o Sponsor", options=sponsor_options)
 
 status_delta3 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente", "Atrasado"]
 Delta3Filtro = st.sidebar.selectbox("Status delta 3", status_delta3)
@@ -60,6 +66,13 @@ st.sidebar.write("--------------Regulatório--------------")
 
 regulatorio_delta1 = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
 regulatorio_Delta1Filtro = st.sidebar.selectbox("Tempo no regulatório", regulatorio_delta1)
+
+st.sidebar.write("--------------Geral--------------")
+
+geral_ativacao = ["Geral", "Sem informação", "No prazo", "Alerta", "Urgente"]
+geral_ativacaoFiltro = st.sidebar.selectbox("Tempo no regulatório", geral_ativacao, key=69)
+
+
 
 
 
@@ -104,8 +117,15 @@ if orcamentos_Delta3Filtro != "Geral":
 if regulatorio_Delta1Filtro != "Geral":
     df_modificado = df_modificado[df_modificado['Tempo regulatório'] == regulatorio_Delta1Filtro]
 
+#Geral 
+if geral_ativacaoFiltro != "Geral":
+    df_modificado = df_modificado[df_modificado['ativação do centro após todo o fluxo'] == geral_ativacaoFiltro]
 
+if CentroFiltro:
+        df_modificado = df_modificado[df_modificado['Centro coordenador'].isin(CentroFiltro)]
 
+if protocoloFiltro:
+        df_modificado = df_modificado[df_modificado['Protocolo'].isin(protocoloFiltro)]
 
 #TODO: Abas
 CONTRATOS, ORCAMENTOS, REGULATORIO, GERAL = st.tabs(["**CONTRATOS**", "**ORÇAMENTOS**", "**REGULATÓRIO**", "**GERAL**"])
@@ -121,7 +141,7 @@ with CONTRATOS:
     graf1, graf2 = st.columns(2)
     with graf1:
         contagem = df_modificado['Tempo ate a resposta'].value_counts().reindex(status_opcoes[1:], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="1")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do tempo até resposta", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="1")
     with graf2:
         #       st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Investigador PI', 'Contratos por Investigador PI'), use_container_width=True, key="2")
 
@@ -144,8 +164,8 @@ with CONTRATOS:
         
         # Gráfico com Altair (barras horizontais)
         chart = alt.Chart(df_grouped).mark_bar().encode(
-            y=alt.Y('Investigador:N', sort='-x'),
-            x='Quantidade:Q',
+            y=alt.Y('Investigador:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
             #color='status:N',
             color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
 
@@ -164,7 +184,7 @@ with CONTRATOS:
     graf3, graf4 = st.columns(2)
     with graf3:
         contagem = df_modificado['até aprovação'].value_counts().reindex(["Sem informação", "No prazo", "Alerta", "Urgente"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 2", ["gray", "green", "orange", "red"]), use_container_width=True, key="3")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do tempo até aprovação", ["gray", "green", "orange", "red"]), use_container_width=True, key="3")
     with graf4:
         st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Nome do patrocinador', 'Contratos por Sponsor'), use_container_width=True, key="4")
 
@@ -175,7 +195,7 @@ with CONTRATOS:
     graf5, graf6 = st.columns(2)
     with graf5:
         contagem = df_modificado['Aprovação até a assinatura'].value_counts().reindex(status_delta3[1:], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="5")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do tempo da aprovação até a assinatura", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="5")
     with graf6:
 
        # Agrupamento e contagem
@@ -189,10 +209,10 @@ with CONTRATOS:
 
         # Gráfico com Altair (barras horizontais)
         chart = alt.Chart(df_grouped).mark_bar().encode(
-            y=alt.Y('Sponsor:N', sort='-x'),
-            x='Quantidade:Q',
+            y=alt.Y('Sponsor:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
             color='Investigador:N',
-            tooltip=['Sponsor', 'Investigador', 'Quantidade']
+            tooltip=['Investigador', 'Quantidade']
         ).properties(
             width='container',
             height=500
@@ -207,27 +227,35 @@ with CONTRATOS:
     graf7, graf8 = st.columns(2)
     with graf7:
         contagem = df_modificado['Até a assinatura'].value_counts().reindex(["Sem informação","Tempo bom", "Atenção", "Atrasado"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 4", ["gray","green", "orange", "red"]), use_container_width=True, key="7")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do tempo até a assinatura", ["gray","green", "orange", "red"]), use_container_width=True, key="7")
     with graf8:
         # Agrupamento e contagem
-        df_grouped = df_modificado.groupby(['Status do contrato', 'Tempo ate a resposta']).size().reset_index(name='Quantidade')
+        df_grouped = df_modificado.groupby(['Status do contrato', 'Até a assinatura']).size().reset_index(name='Quantidade')
 
         # Renomeia colunas para facilitar o uso no Streamlit
         df_grouped = df_grouped.rename(columns={
             'Status do contrato': 'Status',
-            'Tempo ate a resposta': 'Tempo ate a resposta'
+            'Até a assinatura': 'Até a assinatura'
         })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "Tempo bom": "green",
+            "Atenção": "orange",
+            "Atrasado": "red"
+        }
 
         # Gráfico de barras horizontais com Altair
         chart = alt.Chart(df_grouped).mark_bar().encode(
-            y=alt.Y('Status:N', sort='-x', title='Status do Contrato'),
-            x=alt.X('Quantidade:Q', title='Quantidade'),
-            color=alt.Color('Tempo ate a resposta:N', title='Tempo ate a resposta'),
-            tooltip=['Status', 'Tempo ate a resposta', 'Quantidade']
+            y=alt.Y('Status:N', sort='-x', axis=alt.Axis(grid=False, domain=False), title='Status do Contrato'),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False), title='Quantidade'),
+            #color=alt.Color('Até a assinatura:N', title='Até a assinatura'),
+            color=alt.Color('Até a assinatura:N', title='Até a assinatura', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+            tooltip=['Até a assinatura', 'Quantidade']
         ).properties(
             width='container',
             height=500,
-            title='Quantidade por Status do Contrato e Tempo ate a resposta'
+            title='Quantidade por Status do Contrato e até a assinatura'
         )
 
         # Exibe o gráfico no Streamlit
@@ -300,31 +328,114 @@ with ORCAMENTOS:
     orca1, orca2 = st.columns(2)
     with orca1:
         contagem = df_modificado['resposta do orçamento'].value_counts().reindex(["Sem informação","No prazo","Alerta", "Urgente", "Atrasado"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 1", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="9")
-    with orca2:
-        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Centro coordenador', 'Centro'), use_container_width=True, key="10")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do cadastro do orçamento até resposta", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="9")
+    with orca2:        
+        df_grouped = df_modificado.groupby(['resposta do orçamento', 'Centro coordenador']).size().reset_index(name='Quantidade')
 
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Centro coordenador': 'Centro',
+            'resposta do orçamento': 'status'
+        })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "No prazo": "green",
+            "Alerta": "orange",
+            "Urgente": "red",
+            "Atrasado": "lightblue"
+        }
+        
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Centro:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
+            #color='status:N',
+            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+
+            tooltip=['Centro', 'status', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
+        )
+
+        st.altair_chart(chart, use_container_width=True, key="61")
 
     with st.expander("Delta 2"):
         st.markdown("O delta 2 e o tempo decorrido da resposta até a data de aprovação dos orçamentos :<br>< 15 dias: No prazo<br>15 - 29 dias: Alerta<br>30+ dias: Urgente", unsafe_allow_html=True)
     orca3, orca4 = st.columns(2)
     with orca3:
         contagem = df_modificado['resposta até aprovado em orçamento'].value_counts().reindex(["Sem informação","No prazo", "Alerta", "Urgente"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 2", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="11")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação da resposta até a data de aprovação", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="11")
     with orca4:
-        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Nome do patrocinador', 'Sponsor'), use_container_width=True, key="12")
+        #st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Nome do patrocinador', 'Sponsor'), use_container_width=True, key="12")
+        df_grouped = df_modificado.groupby(['resposta até aprovado em orçamento', 'Nome do patrocinador']).size().reset_index(name='Quantidade')
 
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Nome do patrocinador': 'Nome do patrocinador',
+            'resposta até aprovado em orçamento': 'status'
+        })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "No prazo": "green",
+            "Alerta": "orange",
+            "Urgente": "red"}
+        
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Nome do patrocinador:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
+            #color='status:N',
+            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+
+            tooltip=['Nome do patrocinador', 'status', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
+        )
+
+        st.altair_chart(chart, use_container_width=True, key="62")
 
 
     with st.expander("Delta 3"):
         st.markdown("O delta 3 e o tempo geral no orçamento:<br>< 19 dias: Bom<br>20 - 44 dias: Atenção<br>45+ dias: Atrasado", unsafe_allow_html=True)
     orca5, orca6 = st.columns(2)
     with orca5:
-        contagem = df_modificado['Tempo geral no orçamento'].value_counts().reindex(["Sem informação","Bom", "Atenção", "Atrasado"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta 3", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="13")
-    with orca6:
-        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Status do orcamento', 'Status'), use_container_width=True, key="14")
+        contagem = df_modificado['Tempo geral no orçamento'].value_counts().reindex(["Sem informação","Tempo bom", "Atenção", "Atrasado"], fill_value=0)
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação tempo geral no orçamento", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="13")
+    with orca6:        
+        # Agrupamento e contagem
+        df_grouped = df_modificado.groupby(['Status do orcamento', 'Tempo geral no orçamento']).size().reset_index(name='Quantidade')
 
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Status do orcamento': 'Status',
+            'Tempo geral no orçamento': 'Tempo geral no orçamento'
+        })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "Tempo bom": "green",
+            "Atenção": "orange",
+            "Atrasado": "red"
+        }
+
+        # Gráfico de barras horizontais com Altair
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Status:N', sort='-x', axis=alt.Axis(grid=False, domain=False), title='Status do orcamento'),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False), title='Quantidade'),
+            color=alt.Color('Tempo geral no orçamento:N', title='Tempo geral no orçamento', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+            tooltip=['Tempo geral no orçamento', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500,
+            title='Status'
+        )
+
+        # Exibe o gráfico no Streamlit
+        st.altair_chart(chart, use_container_width=True, key="8")
 
     
     sla1, sla2, sla3 = st.columns(3)
@@ -350,12 +461,12 @@ with ORCAMENTOS:
         )
     with sla3:
         # Dados de contagem
-        contagem = df_modificado['Tempo geral no orçamento'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+        contagem = df_modificado['Tempo geral no orçamento'].value_counts().reindex(["Sem informação","Tempo bom", "Atenção", "Atrasado"], fill_value=0)
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
             graficos.grafico_pizza(contagem, "Delta 3", 
-                        ["gray", "green", "orange", "red", "lightblue"]),
+                        ["gray", "green", "orange", "red"]),
             use_container_width=True, key="17"
         )
 
@@ -378,9 +489,39 @@ with REGULATORIO:
     regul1, regul2 = st.columns(2)
     with regul1:
         contagem = df_modificado['Tempo regulatório'].value_counts().reindex(["Sem informação","No prazo", "Alerta", "Urgente"], fill_value=0)
-        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do Delta", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="18")
+        st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do processo do regulatório:", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="18")
     with regul2:
-        st.plotly_chart(graficos.grafico_horizontal_por_coluna(df_modificado,'Centro coordenador', 'Centro'), use_container_width=True, key="19")
+        df_grouped = df_modificado.groupby(['Tempo regulatório', 'Centro coordenador']).size().reset_index(name='Quantidade')
+
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Centro coordenador': 'Centro',
+            'Tempo regulatório': 'status'
+        })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "No prazo": "green",
+            "Alerta": "orange",
+            "Urgente": "red"
+        }
+        
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Centro:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False), title='Quantidade'),
+            #color='status:N',
+            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+
+            tooltip=['Centro', 'status', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
+        )
+
+        st.altair_chart(chart, use_container_width=True, key="19")
+
+
 
 
     # Dados de contagem
@@ -412,19 +553,85 @@ with GERAL:
         contagem = df_modificado['ativação do centro após todo o fluxo'].value_counts().reindex(["Sem informação","No prazo", "Alerta", "Urgente"], fill_value=0)
         st.plotly_chart(graficos.grafico_barras(contagem, "Classificação ativação de centro", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="21")
     with geral2:
-        pass
+        df_grouped = df_modificado.groupby(['ativação do centro após todo o fluxo', 'Centro coordenador']).size().reset_index(name='Quantidade')
+
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Centro coordenador': 'Centro',
+            'ativação do centro após todo o fluxo': 'status'
+        })
+
+        cores_personalizadas = {
+            "Sem informação": "gray",
+            "No prazo": "green",
+            "Alerta": "orange",
+            "Urgente": "red",
+            "Atrasado": "lightblue"
+        }
+        
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Centro:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
+            #color='status:N',
+            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+
+            tooltip=['status', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
+        )
+
+        st.altair_chart(chart, use_container_width=True, key="61")
+
+
 
 
      # Dados de contagem
-    contagem = df_modificado['ativação do centro após todo o fluxo'].value_counts().reindex(status_opcoes[1:], fill_value=0)
-    # Exibe o gráfico no Streamlit
-    st.plotly_chart(
-        graficos.grafico_pizza(contagem, "status geral", 
-                ["gray", "green", "orange", "red", "lightblue"]),
-        use_container_width=True , key="22"
-    )
+    # contagem = df_modificado['ativação do centro após todo o fluxo'].value_counts().reindex(status_opcoes[1:], fill_value=0)
+    # # Exibe o gráfico no Streamlit
+    # st.plotly_chart(
+    #     graficos.grafico_pizza(contagem, "status geral", 
+    #             ["gray", "green", "orange", "red", "lightblue"]),
+    #     use_container_width=True , key="22"
+    # )
 
+    geral3, geral4 = st.columns(2)
+    with geral3:
+        contagem = df_modificado['Status'].value_counts()
+        st.plotly_chart(graficos.grafico_barras(contagem, 'Status Geral', ["gray", "green", "orange", "red", "lightblue"] ), use_container_width=True, key="65")
 
+    with geral4:
+        df_grouped = df_modificado.groupby(['Status', 'Centro coordenador']).size().reset_index(name='Quantidade')
+
+        # Renomeia colunas para facilitar o uso no Streamlit
+        df_grouped = df_grouped.rename(columns={
+            'Centro coordenador': 'Centro',
+            'Status': 'status'
+        })
+
+        cores_personalizadas = {
+            "Recrutamento aberto": "gray",
+            "Qualificado": "green",
+            "Em apreciação Ética": "orange",
+            "Aguardando Ativação do Centro": "red",
+            "Fase Contratual": "lightblue"
+        }
+        
+        # Gráfico com Altair (barras horizontais)
+        chart = alt.Chart(df_grouped).mark_bar().encode(
+            y=alt.Y('Centro:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
+            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
+            #color='status:N',
+            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
+
+            tooltip=['status', 'Quantidade']
+        ).properties(
+            width='container',
+            height=500
+        )
+
+        st.altair_chart(chart, use_container_width=True, key="66")
 
 
     st.subheader("Tabela Geral")
