@@ -270,7 +270,7 @@ with CONTRATOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 1", 
+            graficos.grafico_pizza(contagem, "Tempo até resposta", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True
         )
@@ -281,7 +281,7 @@ with CONTRATOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 2", 
+            graficos.grafico_pizza(contagem, "Tempo até aprovação", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True
         )
@@ -292,7 +292,7 @@ with CONTRATOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 3", 
+            graficos.grafico_pizza(contagem, "Tempo da aprovação até a assinatura", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True
         )
@@ -302,7 +302,7 @@ with CONTRATOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 4", 
+            graficos.grafico_pizza(contagem, "Tempo até a assinatura", 
                         [ "gray", "green","orange", "red", "lightblue"]),
             use_container_width=True
         )
@@ -445,7 +445,7 @@ with ORCAMENTOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 1", 
+            graficos.grafico_pizza(contagem, "Tempo decorido do cadastro do orçamento até resposta", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True , key="15"
         )
@@ -455,7 +455,7 @@ with ORCAMENTOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 2", 
+            graficos.grafico_pizza(contagem, "Tempo decorrido da resposta até a data de aprovação", 
                         ["gray", "green", "orange", "red", "lightblue"]),
             use_container_width=True, key="16"
         )
@@ -465,7 +465,7 @@ with ORCAMENTOS:
 
         # Exibe o gráfico no Streamlit
         st.plotly_chart(
-            graficos.grafico_pizza(contagem, "Delta 3", 
+            graficos.grafico_pizza(contagem, "Tempo geral no orçamento", 
                         ["gray", "green", "orange", "red"]),
             use_container_width=True, key="17"
         )
@@ -520,9 +520,6 @@ with REGULATORIO:
         )
 
         st.altair_chart(chart, use_container_width=True, key="19")
-
-
-
 
     # Dados de contagem
     contagem = df_modificado['Tempo regulatório'].value_counts().reindex(status_opcoes[1:], fill_value=0)
@@ -583,9 +580,6 @@ with GERAL:
         )
 
         st.altair_chart(chart, use_container_width=True, key="61")
-
-
-
 
      # Dados de contagem
     # contagem = df_modificado['ativação do centro após todo o fluxo'].value_counts().reindex(status_opcoes[1:], fill_value=0)
