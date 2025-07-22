@@ -1,4 +1,7 @@
 import plotly.graph_objects as go
+import plotly.express as px
+import altair as alt
+import streamlit as st
 
 
 # Função de gráfico de barras
@@ -66,3 +69,94 @@ def grafico_pizza(contagem, titulo, cores):
             margin=dict(l=0, r=0, t=40, b=0)
         )
     )
+
+
+def delta3(df_modificado):
+    # Agrupamento e contagem
+    df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
+
+    # Renomeia colunas
+    df_grouped = df_grouped.rename(columns={
+        'Nome do patrocinador': 'Sponsor',
+        'Investigador PI': 'Investigador'
+    })
+
+    # Gráfico de barras horizontais com Plotly
+    fig = px.bar(
+        df_grouped,
+        x='Quantidade',
+        y='Sponsor',
+        color='Investigador',
+        orientation='h',
+        hover_data=['Investigador', 'Quantidade'],
+        height=500
+    )
+
+    # Layout e legenda reposicionada
+    fig.update_layout(
+        xaxis_title='Quantidade',
+        yaxis_title='Sponsor',
+        yaxis=dict(categoryorder='total ascending'),
+        bargap=0.2,
+        margin=dict(l=10, r=10, t=30, b=80),  # mais espaço embaixo
+        legend=dict(
+            title='Investigador',
+            orientation='h',
+            x=1,
+            xanchor='right',
+            y=-0.3,  # legenda abaixo do gráfico
+            yanchor='top'
+        )
+    )
+
+    return fig
+
+def statusgeral(df_modificado):
+    # Agrupamento e contagem
+    df_grouped = df_modificado.groupby(['Status', 'Centro coordenador']).size().reset_index(name='Quantidade')
+
+    # Renomeia colunas
+    df_grouped = df_grouped.rename(columns={
+        'Centro coordenador': 'Centro',
+        'Status': 'status'
+    })
+
+    # Cores personalizadas por status
+    cores_personalizadas = {
+        "Recrutamento aberto": "gray",
+        "Qualificado": "green",
+        "Em apreciação Ética": "orange",
+        "Aguardando Ativação do Centro": "red",
+        "Fase Contratual": "lightblue"
+    }
+
+    # Gráfico com Plotly
+    fig = px.bar(
+        df_grouped,
+        x='Quantidade',
+        y='Centro',
+        color='status',
+        orientation='h',
+        hover_data=['status', 'Quantidade'],
+        height=500,
+        color_discrete_map=cores_personalizadas
+    )
+
+    # Layout e legenda fora do gráfico
+    fig.update_layout(
+        xaxis_title='Quantidade',
+        yaxis_title='Centro',
+        yaxis=dict(categoryorder='total ascending'),
+        bargap=0.2,
+        margin=dict(l=10, r=10, t=30, b=80),
+        legend=dict(
+            title='Status',
+            orientation='h',
+            x=1,
+            xanchor='right',
+            y=-0.3,
+            yanchor='top'
+        )
+    )
+
+    return fig

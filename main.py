@@ -9,6 +9,77 @@ import graficos
 import deltas
 import altair as alt
 
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+import bcrypt
+import os
+
+
+import pandas as pd
+import datetime as dt
+from datetime import datetime
+from sqlalchemy.engine import URL
+import plotly.express as px
+import plotly.figure_factory as ff
+from plotly import graph_objects as go
+import numpy as np
+import requests
+import json
+import psycopg2
+# ---------- CONFIGURAÇÕES ----------
+load_dotenv()
+st.set_page_config(page_title="Login Simples", layout="centered")
+engine = create_engine(os.getenv("DB_URL"), pool_pre_ping=True)
+secret_key = os.getenv("secret_key")
+
+# ---------- FUNÇÕES ----------
+def buscar_usuario_por_email(email):
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT id_usuario, nomeusuario, email, senha, funcao FROM usuarios_nap WHERE email = :e"),
+            {"e": email.lower()}
+        ).fetchone()
+    return row
+
+def validar_login(email, senha_digitada):
+    usuario = buscar_usuario_por_email(email)
+    if usuario and bcrypt.checkpw(senha_digitada.encode(), usuario.senha.encode()) and (usuario.funcao == "TI" or usuario.funcao == "CEO" ) :
+        st.session_state["usuario"] = {
+            "id": usuario.id_usuario,
+            "nomeusuario": usuario.nomeusuario,
+            "email": usuario.email,
+            "funcao": usuario.funcao
+            }
+        return True
+    return False
+
+def logout():
+    st.session_state.pop("usuario", None)
+    st.rerun()
+
+# ---------- LOGIN ----------
+if "usuario" not in st.session_state:
+    st.title("🔐 Login necessário")
+
+    with st.form("login_form"):
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        submit = st.form_submit_button("Entrar")
+
+    if submit:
+        if validar_login(email, senha):
+            st.success(f"Bem-vindo, {st.session_state['usuario']['nomeusuario']}!")
+            st.rerun()
+        else:
+            st.error("E-mail ou senha inválidos")
+
+    st.stop()
+
+# ---------- CONTEÚDO PROTEGIDO ----------
+
+st.sidebar.write(f"👤 {st.session_state['usuario']['nomeusuario']}")
+if st.sidebar.button("Sair"):
+    logout()
 
 # TODO Configuração da página
 st.set_page_config(page_title="KPIs", layout="wide")
@@ -197,28 +268,8 @@ with CONTRATOS:
         contagem = df_modificado['Aprovação até a assinatura'].value_counts().reindex(status_delta3[1:], fill_value=0)
         st.plotly_chart(graficos.grafico_barras(contagem, "Classificação do tempo da aprovação até a assinatura", ["gray", "green", "orange", "red", "lightblue"]), use_container_width=True, key="5")
     with graf6:
+        st.plotly_chart(graficos.delta3(df_modificado), use_container_width=True, key="6")
 
-       # Agrupamento e contagem
-        df_grouped = df_modificado.groupby(['Nome do patrocinador', 'Investigador PI']).size().reset_index(name='Quantidade')
-
-        # Renomeia colunas para facilitar o uso no Streamlit
-        df_grouped = df_grouped.rename(columns={
-            'Nome do patrocinador': 'Sponsor',
-            'Investigador PI': 'Investigador'
-        })
-
-        # Gráfico com Altair (barras horizontais)
-        chart = alt.Chart(df_grouped).mark_bar().encode(
-            y=alt.Y('Sponsor:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
-            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
-            color='Investigador:N',
-            tooltip=['Investigador', 'Quantidade']
-        ).properties(
-            width='container',
-            height=500
-        )
-
-        st.altair_chart(chart, use_container_width=True, key="6")
 
     #TODO: Delta 4
     with st.expander("Delta 4"):
@@ -596,36 +647,8 @@ with GERAL:
         st.plotly_chart(graficos.grafico_barras(contagem, 'Status Geral', ["gray", "green", "orange", "red", "lightblue"] ), use_container_width=True, key="65")
 
     with geral4:
-        df_grouped = df_modificado.groupby(['Status', 'Centro coordenador']).size().reset_index(name='Quantidade')
+        st.plotly_chart(graficos.statusgeral(df_modificado), use_container_width=True, key="status")
 
-        # Renomeia colunas para facilitar o uso no Streamlit
-        df_grouped = df_grouped.rename(columns={
-            'Centro coordenador': 'Centro',
-            'Status': 'status'
-        })
-
-        cores_personalizadas = {
-            "Recrutamento aberto": "gray",
-            "Qualificado": "green",
-            "Em apreciação Ética": "orange",
-            "Aguardando Ativação do Centro": "red",
-            "Fase Contratual": "lightblue"
-        }
-        
-        # Gráfico com Altair (barras horizontais)
-        chart = alt.Chart(df_grouped).mark_bar().encode(
-            y=alt.Y('Centro:N', sort='-x', axis=alt.Axis(grid=False, domain=False)),
-            x=alt.X('Quantidade:Q', axis=alt.Axis(grid=False, domain=False)),
-            #color='status:N',
-            color=alt.Color('status:N', scale=alt.Scale(domain=list(cores_personalizadas.keys()), range=list(cores_personalizadas.values()))),
-
-            tooltip=['status', 'Quantidade']
-        ).properties(
-            width='container',
-            height=500
-        )
-
-        st.altair_chart(chart, use_container_width=True, key="66")
 
 
     st.subheader("Tabela Geral")
