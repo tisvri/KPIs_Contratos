@@ -30,7 +30,7 @@ import psycopg2
 load_dotenv()
 st.set_page_config(page_title="Login Simples", layout="centered")
 engine = create_engine(os.getenv("DB_URL"), pool_pre_ping=True)
-secret_key = os.getenv("secret_key")  # pode usar futuramente para JWT ou session
+secret_key = os.getenv("secret_key")
 
 # ---------- FUNÇÕES ----------
 def buscar_usuario_por_email(email):
@@ -43,7 +43,7 @@ def buscar_usuario_por_email(email):
 
 def validar_login(email, senha_digitada):
     usuario = buscar_usuario_por_email(email)
-    if usuario and bcrypt.checkpw(senha_digitada.encode(), usuario.senha.encode()):
+    if usuario and bcrypt.checkpw(senha_digitada.encode(), usuario.senha.encode()) and (usuario.funcao == "TI" or usuario.funcao == "CEO" ) :
         st.session_state["usuario"] = {
             "id": usuario.id_usuario,
             "nomeusuario": usuario.nomeusuario,
