@@ -9,6 +9,77 @@ import graficos
 import deltas
 import altair as alt
 
+from sqlalchemy import create_engine, text
+from dotenv import load_dotenv
+import bcrypt
+import os
+
+
+import pandas as pd
+import datetime as dt
+from datetime import datetime
+from sqlalchemy.engine import URL
+import plotly.express as px
+import plotly.figure_factory as ff
+from plotly import graph_objects as go
+import numpy as np
+import requests
+import json
+import psycopg2
+# ---------- CONFIGURAÇÕES ----------
+load_dotenv()
+st.set_page_config(page_title="Login Simples", layout="centered")
+engine = create_engine(os.getenv("DB_URL"), pool_pre_ping=True)
+secret_key = os.getenv("secret_key")  # pode usar futuramente para JWT ou session
+
+# ---------- FUNÇÕES ----------
+def buscar_usuario_por_email(email):
+    with engine.begin() as conn:
+        row = conn.execute(
+            text("SELECT id_usuario, nomeusuario, email, senha, funcao FROM usuarios_nap WHERE email = :e"),
+            {"e": email.lower()}
+        ).fetchone()
+    return row
+
+def validar_login(email, senha_digitada):
+    usuario = buscar_usuario_por_email(email)
+    if usuario and bcrypt.checkpw(senha_digitada.encode(), usuario.senha.encode()):
+        st.session_state["usuario"] = {
+            "id": usuario.id_usuario,
+            "nomeusuario": usuario.nomeusuario,
+            "email": usuario.email,
+            "funcao": usuario.funcao
+            }
+        return True
+    return False
+
+def logout():
+    st.session_state.pop("usuario", None)
+    st.rerun()
+
+# ---------- LOGIN ----------
+if "usuario" not in st.session_state:
+    st.title("🔐 Login necessário")
+
+    with st.form("login_form"):
+        email = st.text_input("E-mail")
+        senha = st.text_input("Senha", type="password")
+        submit = st.form_submit_button("Entrar")
+
+    if submit:
+        if validar_login(email, senha):
+            st.success(f"Bem-vindo, {st.session_state['usuario']['nomeusuario']}!")
+            st.rerun()
+        else:
+            st.error("E-mail ou senha inválidos")
+
+    st.stop()
+
+# ---------- CONTEÚDO PROTEGIDO ----------
+
+st.sidebar.write(f"👤 {st.session_state['usuario']['nomeusuario']}")
+if st.sidebar.button("Sair"):
+    logout()
 
 # TODO Configuração da página
 st.set_page_config(page_title="KPIs", layout="wide")
